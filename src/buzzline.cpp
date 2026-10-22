@@ -9,7 +9,7 @@ int  minDir = 4095, maxDir = 0;
 int  leituraEsq = 0;
 int  leituraDir = 0;
 
-bool robotLigado = false;
+bool roboLigado = false;
 
 void iniciarPinos() {
 
@@ -59,8 +59,8 @@ void lerSensores() {
   int brutoEsq = analogRead(PINO_SENSOR_ESQ);
   int brutoDir = analogRead(PINO_SENSOR_DIR);
 
-  leituraEsq = map(brutoEsq, minEsq, maxEsq, 100, 0);
-  leituraDir = map(brutoDir, minDir, maxDir, 100, 0);
+  leituraEsq = map(brutoEsq, minEsq, maxEsq, 0, 100);
+  leituraDir = map(brutoDir, minDir, maxDir, 0, 100); // inverter para 100 -> 0 se a linha for preta
 
   leituraEsq = constrain(leituraEsq, 0, 100);
   leituraDir = constrain(leituraDir, 0, 100);
