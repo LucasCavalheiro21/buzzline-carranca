@@ -17,10 +17,9 @@ const int PINO_LED = 15; // led imbutido da placa (aceso = robo ligado)
 
 // ajustes iniciais
 
-const int VELOCIDADE_BASE = 150; // 0 a 255
-const float KP = 1.5; // se oscilar muito, diminuir | se lento, aumentar
+const int VELOCIDADE_BASE = 130; // 0 a 255
+const float KP = 2; // se oscilar muito, diminuir | se lento, aumentar
 const int TEMPO_CALIBRACAO = 8000; // tempo pra calibrar
-const int LIMITE_LINHA = 20; // abaixo desse valor (0 a 100) o sensor esta fora da linha
 const int TEMPO_SERIAL = 200; // intervalo entre as mensagens no monitor serial (ms)
 
 // variaveis
