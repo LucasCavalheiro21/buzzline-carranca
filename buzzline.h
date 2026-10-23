@@ -13,10 +13,6 @@
 const int PINO_SENSOR_ESQ = 35;
 const int PINO_SENSOR_DIR = 32;
 
-// motores: na rocky a ponte h ja vem na placa
-// motor esquerdo = entrada A | motor direito = entrada B
-// os pinos dos motores sao controlados pela biblioteca, nao precisa definir aqui
-
 const int PINO_BOTAO = 16;
 const int PINO_LED = 15; // led imbutido da placa (aceso = robo ligado)
 

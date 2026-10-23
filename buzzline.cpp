@@ -2,7 +2,7 @@
 
 // variaveis
 
-int  minEsq = 4095, maxEsq = 0; // calibracao do sensor esquerdo (no esp32 a leitura vai de 0 a 4095)
+int  minEsq = 4095, maxEsq = 0; // calibracao do sensor esquerdo
 int  minDir = 4095, maxDir = 0; // calibracao do sensor direito
 int  leituraEsq = 0; // valor normalizado (0 a 100)
 int  leituraDir = 0; // 100 = linha preta, 0 = branco
@@ -17,7 +17,6 @@ unsigned long ultimoPrintMotores = 0; // ultima vez que mostrou os motores no se
 
 void iniciarPinos() {
 
-  // os pinos dos motores ja sao configurados pela biblioteca
   pinMode(PINO_BOTAO, INPUT_PULLUP);
   pinMode(PINO_LED, OUTPUT);
   digitalWrite(PINO_LED, LOW); // comeca apagado
@@ -25,9 +24,6 @@ void iniciarPinos() {
   Serial.println("pinos configurados");
 
 }
-
-// calibracao: mover o robo sobre a linha preta e sobre o chao branco
-// o codigo guarda o menor e o maior valor lido e define o que é preto e o que é branco
 
 void calibrarSensores() {
 
@@ -49,7 +45,7 @@ void calibrarSensores() {
 
   // mostra o resultado da calibracao
 
-  Serial.println("calibracao terminada");
+  Serial.println("calibracao concluida");
   Serial.print("sensor esquerdo -> min: ");
   Serial.print(minEsq);
   Serial.print(" | max: ");
@@ -59,24 +55,18 @@ void calibrarSensores() {
   Serial.print(" | max: ");
   Serial.println(maxDir);
 
-  // se o min e o max ficarem muito proximos, os sensores nao viram a linha e o chao direito
-
 }
-
-// leitura: converte cada sensor para uma escala de 0 a 100
-// 100 = preto (linha) | 0 = branco
 
 void lerSensores() {
 
-  int calibraEsq = analogRead(PINO_SENSOR_ESQ); // leitura do sensor esquerdo
-  int calibraDir = analogRead(PINO_SENSOR_DIR);
+  int brutoEsq = analogRead(PINO_SENSOR_ESQ); // leitura do sensor esquerdo
+  int brutoDir = analogRead(PINO_SENSOR_DIR);
 
-  leituraEsq = constrain(map(calibraEsq, minEsq, maxEsq, 100, 0), 0, 100);
-  leituraDir = constrain(map(calibraDir, minDir, maxDir, 100, 0), 0, 100);
+  leituraEsq = constrain(map(brutoEsq, minEsq, maxEsq, 100, 0), 0, 100); // linha preta = 100 | branco = 0
+  leituraDir = constrain(map(brutoDir, minDir, maxDir, 100, 0), 0, 100); // linha branca = 0 | preto = 100
 
   // transforma o valor de preto em minimo e o valor de branco em maximo pra facilitar o controle proporcional
-  // 100 a 0 -> 0 a 100 | deixa mais intuitivo
-
+ 
   // mostra os valores no serial a cada TEMPO_SERIAL ms (se mostrar toda hora o robo fica lento)
 
   if (millis() - ultimoPrintSensores >= TEMPO_SERIAL) {
@@ -84,9 +74,9 @@ void lerSensores() {
     ultimoPrintSensores = millis();
 
     Serial.print("bruto esq: ");
-    Serial.print(calibraEsq);
+    Serial.print(brutoEsq);
     Serial.print(" | bruto dir: ");
-    Serial.print(calibraDir);
+    Serial.print(brutoDir);
     Serial.print(" | normal esq: ");
     Serial.print(leituraEsq);
     Serial.print(" | normal dir: ");
