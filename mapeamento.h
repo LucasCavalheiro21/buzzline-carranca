@@ -1,8 +1,8 @@
-#ifndef BUZZLINE_H // funcao para nao incluir o mesmo arquivo mais de uma vez
+#ifndef MAPEAMENTO_H // funcao para nao incluir o mesmo arquivo mais de uma vez
 
-// se buzzline.h ja foi incluido ele ignora o resto do codigo
+// se mapeamento.h ja foi incluido ele ignora o resto do codigo
 
-#define BUZZLINE_H
+#define MAPEAMENTO_H
 
 #include <Arduino.h>
 #include <RoboCore_Rocky.h> // biblioteca da placa rocky (motores)

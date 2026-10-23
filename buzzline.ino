@@ -1,7 +1,7 @@
 // programa principal do robo seguidor de linha
 // selecionar "ESP32 Dev Module" na arduino ide
 
-#include "buzzline.h" // inclui as funcoes de controle do robo
+#include "mapeamento.h" // inclui as funcoes de controle do robo
 
 void setup() {
 
