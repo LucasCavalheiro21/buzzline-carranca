@@ -17,7 +17,8 @@ unsigned long ultimoPrintMotores = 0; // ultima vez que mostrou os motores no se
 
 void iniciarPinos() {
 
-  pinMode(PINO_BOTAO, INPUT_PULLUP);
+  // Alterado de INPUT_PULLUP para INPUT_PULLDOWN
+  pinMode(PINO_BOTAO, INPUT_PULLDOWN); 
   pinMode(PINO_LED, OUTPUT);
   digitalWrite(PINO_LED, LOW); // comeca apagado
 
@@ -145,26 +146,23 @@ void controleProporcional() {
 
 void verificarBotao() {
 
-  if (digitalRead(PINO_BOTAO) == LOW) {
+  // Alterado para HIGH: agora o pino recebe energia quando o botão é pressionado
+  if (digitalRead(PINO_BOTAO) == HIGH) { 
 
     roboLigado = !roboLigado; // inverte o estado
     digitalWrite(PINO_LED, roboLigado); // led aceso = ligado | apagado = desligado
 
     if (roboLigado) {
-
       Serial.println("botao apertado: robo LIGADO");
-
     } else {
-
       Serial.println("botao apertado: robo DESLIGADO");
-
     }
 
     delay(300); // delay para evitar ler varias vezes
 
     // espera soltar o botao
-
-    while (digitalRead(PINO_BOTAO) == LOW) {
+    // Alterado para HIGH para ele ficar preso no loop enquanto o botão estiver pressionado
+    while (digitalRead(PINO_BOTAO) == HIGH) {
 
     }
   }
