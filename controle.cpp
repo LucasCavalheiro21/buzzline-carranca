@@ -170,6 +170,8 @@ void verificarBotao() {
 
     while (digitalRead(PINO_BOTAO) == LOW) {
 
+      delay(10);
+
     }
   }
 } 
