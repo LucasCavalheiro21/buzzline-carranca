@@ -1,49 +1,71 @@
-#include "mapeamento.h" // inclui as funcoes de controle do robo
+#include "mapeamento.h"
 
 // variaveis
 
-int  minEsq = 4095, maxEsq = 0; // calibracao do sensor esquerdo
-int  minDir = 4095, maxDir = 0; // calibracao do sensor direito
-int  leituraEsq = 0; // valor normalizado (0 a 100)
-int  leituraDir = 0; // 100 = linha preta, 0 = branco
+int minEsq = 4095, maxEsq = 0; // calibracao do sensor esquerdo
+int minDir = 4095, maxDir = 0; // calibracao do sensor direito
+int leituraEsq = 0; // valor normalizado (0 a 100)
+int leituraDir = 0; // 100 = em cima da LINHA, 0 = em cima do CHAO
 bool roboLigado = false; // true = andando, false = parado
 
-RockyMotors motores; // motores da rocky (A = esquerdo | B = direito)
+RockyMotors motores; // A = esquerdo | B = direito
 
+// memoria do controle
+
+int erroAnterior = 0; // erro do calculo anterior 
+unsigned long ultimoControle = 0; // ultima vez que o controle foi calculado
+
+// memoria do botao
+
+bool ultimaLeituraBotao = HIGH;
+bool estadoBotao = HIGH;
+unsigned long instanteMudancaBotao = 0;
 unsigned long ultimoPrintSensores = 0; // ultima vez que mostrou os sensores no serial
 unsigned long ultimoPrintMotores = 0; // ultima vez que mostrou os motores no serial
 
-// configuracao dos pinos
+// pinos
 
-void iniciarPinos() {
+void iniciarPinos(){
 
-  // Alterado para INPUT_PULLUP (padrão do botão BOOT)
-
-  pinMode(PINO_BOTAO, INPUT_PULLUP);
+  pinMode(PINO_BOTAO, INPUT_PULLUP); // botao BOOT: LOW quando apertado
   pinMode(PINO_LED, OUTPUT);
   digitalWrite(PINO_LED, LOW); // comeca apagado
+
+  ultimaLeituraBotao = digitalRead(PINO_BOTAO);
+  estadoBotao = ultimaLeituraBotao;
 
   Serial.println("pinos configurados");
 
 }
 
-void calibrarSensores() {
+// calibrar
 
-  Serial.println("calibracao iniciada: passe os sensores sobre a linha e o chao");
+bool calibrarSensores(){
 
-  unsigned long inicio = millis(); // tempo inicial da calibracao
+  // led pisca enqto calibra
 
-  while (millis() - inicio < TEMPO_CALIBRACAO) {
+  Serial.println(LINHA_BRANCA ? "arena: linha BRANCA em chao PRETO" : "arena: linha PRETA em chao BRANCO");
+  Serial.println("calibracao iniciada: passe os sensores sobre a linha e chao");
 
-    int esq = analogRead(PINO_SENSOR_ESQ); // leitura do sensor esquerdo
-    int dir = analogRead(PINO_SENSOR_DIR); // leitura do sensor direito
+  unsigned long inicio = millis(); 
 
-    if (esq < minEsq) minEsq = esq; // guarda o menor valor lido
-    if (esq > maxEsq) maxEsq = esq; // guarda o maior valor lido
-    if (dir < minDir) minDir = dir; // guarda o menor valor lido
-    if (dir > maxDir) maxDir = dir; // guarda o maior valor lido
+  while (millis() - inicio < TEMPO_CALIBRACAO){
+
+    int esq = analogRead(PINO_SENSOR_ESQ);
+    int dir = analogRead(PINO_SENSOR_DIR);
+
+    if (esq < minEsq) minEsq = esq; 
+    if (esq > maxEsq) maxEsq = esq; 
+    if (dir < minDir) minDir = dir;
+    if (dir > maxDir) maxDir = dir;
+
+    digitalWrite(PINO_LED, (millis() / 250) % 2); // pisca o led
+
+    delay(2);
 
   }
+
+  digitalWrite(PINO_LED, LOW);
 
   // mostra o resultado da calibracao
 
@@ -57,20 +79,59 @@ void calibrarSensores() {
   Serial.print(" | max: ");
   Serial.println(maxDir);
 
+  // confere se cada sensor viu o preto e branco
+
+  bool ok = true;
+
+  if (maxEsq - minEsq < CONTRASTE_MINIMO){
+
+    Serial.println("[FALHA] sensor ESQUERDO nao viu diferenca entre linha e chao");
+    ok = false;
+
+  }
+
+  if (maxDir - minDir < CONTRASTE_MINIMO){
+
+    Serial.println("[FALHA] sensor DIREITO nao viu diferenca entre linha e chao");
+    ok = false;
+
+  }
+
+  return ok;
+
 }
 
-void lerSensores() {
+// sensores
 
-  int brutoEsq = analogRead(PINO_SENSOR_ESQ); // leitura do sensor esquerdo
+void lerSensores() 
+
+  int brutoEsq = analogRead(PINO_SENSOR_ESQ);
   int brutoDir = analogRead(PINO_SENSOR_DIR);
 
-  leituraEsq = constrain(map(brutoEsq, minEsq, maxEsq, 0, 100), 0, 100); // linha preta = 100 | branco = 0
-  leituraDir = constrain(map(brutoDir, minDir, maxDir, 0, 100), 0, 100); // linha branca = 0 | preto = 100
+  // converte para 0 a 100 
 
-  // transforma o valor de preto em minimo e o valor de branco em maximo pra facilitar o controle proporcional
-   // mostra os valores no serial a cada TEMPO_SERIAL ms (se mostrar toda hora o robo fica lento)
+  leituraEsq = constrain(map(brutoEsq, minEsq, maxEsq, 0, 100), 0, 100);
+  leituraDir = constrain(map(brutoDir, minDir, maxDir, 0, 100), 0, 100);
 
-  if (millis() - ultimoPrintSensores >= TEMPO_SERIAL) {
+  // 100 = preto | 0 = branco
+
+  if (!PRETO_E_VALOR_ALTO){
+
+    leituraEsq = 100 - leituraEsq;
+    leituraDir = 100 - leituraDir;
+
+  }
+
+  // 100 = LINHA | 0 = CHAO
+
+  if (LINHA_BRANCA){
+
+    leituraEsq = 100 - leituraEsq;
+    leituraDir = 100 - leituraDir;
+
+  }
+
+  if (!roboLigado && millis() - ultimoPrintSensores >= TEMPO_SERIAL){
 
     ultimoPrintSensores = millis();
 
@@ -78,61 +139,73 @@ void lerSensores() {
     Serial.print(brutoEsq);
     Serial.print(" | bruto dir: ");
     Serial.print(brutoDir);
-    Serial.print(" | normal esq: ");
+    Serial.print(" | linha esq: ");
     Serial.print(leituraEsq);
-    Serial.print(" | normal dir: ");
+    Serial.print(" | linha dir: ");
     Serial.println(leituraDir);
 
   }
 }
 
-// controle dos motores
+// motores
 
-void controlarMotores(int velEsq, int velDir) {
+void controlarMotores(int velEsq, int velDir){
 
-  // velocidade positiva = frente | negativa = re | 0 = parado
-  // valores de -255 a 255
+  // velocidade positiva = frente | negativa = re | 0 = parado (-255 a 255)
 
-  velEsq = constrain(velEsq, -255, 255); // limita a velocidade para o intervalo permitido
+  velEsq = constrain(velEsq, -255, 255);
   velDir = constrain(velDir, -255, 255);
-
-  // a biblioteca da rocky usa velocidade de -100 a 100
-  // entao converte de -255/255 para -100/100
 
   velEsq = map(velEsq, -255, 255, -100, 100);
   velDir = map(velDir, -255, 255, -100, 100);
 
-  motores.setSpeedLeft(-velEsq); // motor esquerdo (entrada A)
-  motores.setSpeedRight(velDir); // motor direito (entrada B)
-
-  // se algum motor girar pro lado errado, inverta o sinal dele -> ex: motores.setSpeedLeft(-velEsq);
+  motores.setSpeedLeft(velEsq * SENTIDO_ESQ); // motor esquerdo (entrada A)
+  motores.setSpeedRight(velDir * SENTIDO_DIR); // motor direito (entrada B)
 
 }
 
-// controle proporcional
+// controles
 
-void controleProporcional() {
+void reiniciarControle(){
+  erroAnterior = 0;
+  ultimoControle = 0;
 
-  // erro > 0 = linha mais para a esquerda -> vira para a esquerda
-  // erro < 0 = linha mais para a direita -> vira para a direita
+}
 
-  int erro = leituraEsq - leituraDir; // para inverter o sinal -> erro = leituraDir - leituraEsq
-  int correcao = KP * erro; // se o robo virar pro lado errado inverta o sinal do erro
-  int velEsq = VELOCIDADE_BASE - correcao;
-  int velDir = VELOCIDADE_BASE + correcao;
+void controlePD(){
 
-  controlarMotores(velEsq, velDir); // manda a velocidade para os motores
+  if (millis() - ultimoControle < (unsigned long)INTERVALO_CONTROLE) return;
+  ultimoControle = millis();
 
-  // mostra o calculo no serial a cada TEMPO_SERIAL ms
+  // erro > 0 = sensor ESQUERDO ve a linha -> linha a esquerda -> vira para a esquerda
+  // erro < 0 = sensor DIREITO ve a linha  -> linha a direita  -> vira para a direita
+  // erro = 0 = os dois veem o chao -> centralizado -> segue reto
 
-  if (millis() - ultimoPrintMotores >= TEMPO_SERIAL) {
+  int erro = leituraEsq - leituraDir;
+
+  // P = reage ao erro de agora | D = reage a VELOCIDADE com que o erro muda
+
+  float correcao = KP * erro + KD * (erro - erroAnterior);
+  erroAnterior = erro;
+
+  int velEsq = VELOCIDADE_BASE - (int)correcao;
+  int velDir = VELOCIDADE_BASE + (int)correcao;
+
+  velEsq = constrain(velEsq, VELOCIDADE_MINIMA, 255);
+  velDir = constrain(velDir, VELOCIDADE_MINIMA, 255);
+
+  controlarMotores(velEsq, velDir);
+
+  if (millis() - ultimoPrintMotores >= TEMPO_SERIAL){
 
     ultimoPrintMotores = millis();
 
-    Serial.print("erro: ");
+    Serial.print("esq: ");
+    Serial.print(leituraEsq);
+    Serial.print(" | dir: ");
+    Serial.print(leituraDir);
+    Serial.print(" | erro: ");
     Serial.print(erro);
-    Serial.print(" | correcao: ");
-    Serial.print(correcao);
     Serial.print(" | vel esq: ");
     Serial.print(velEsq);
     Serial.print(" | vel dir: ");
@@ -141,37 +214,37 @@ void controleProporcional() {
   }
 }
 
-// ligar e desligar o robo com o botao
+// botao
 
-void verificarBotao() {
+void verificarBotao(){
 
-  // Alterado para LOW: botão BOOT envia sinal baixo quando pressionado
+  bool leitura = digitalRead(PINO_BOTAO);
 
-  if (digitalRead(PINO_BOTAO) == LOW) {
+  if (leitura != ultimaLeituraBotao) instanteMudancaBotao = millis();
 
-    roboLigado = !roboLigado; // inverte o estado
+  if (millis() - instanteMudancaBotao >= (unsigned long)TEMPO_DEBOUNCE && leitura != estadoBotao){
 
-    digitalWrite(PINO_LED, roboLigado); // led aceso = ligado | apagado = desligado
+    estadoBotao = leitura;
 
-    if (roboLigado) {
+    if (estadoBotao == LOW) {
 
-      Serial.println("botao apertado: robo LIGADO");
+      roboLigado = !roboLigado;
+      digitalWrite(PINO_LED, roboLigado); // led aceso = ligado
 
-    } else {
+      if (roboLigado){
 
-      Serial.println("botao apertado: robo DESLIGADO");
+        reiniciarControle();
+        Serial.println("botao apertado: robo LIGADO");
 
-    }
+      } else {
 
-    delay(300); // delay para evitar ler varias vezes
+        controlarMotores(0, 0);
+        Serial.println("botao apertado: robo DESLIGADO");
 
-    // espera soltar o botao
-    // Alterado para LOW para ele ficar preso no loop enquanto o botão estiver pressionado
-
-    while (digitalRead(PINO_BOTAO) == LOW) {
-
-      delay(10);
-
+      }
     }
   }
-} 
+
+  ultimaLeituraBotao = leitura;
+  
+}
