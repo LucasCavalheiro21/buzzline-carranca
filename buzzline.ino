@@ -1,38 +1,45 @@
-// programa principal do robo seguidor de linha
-// selecionar "ESP32 Dev Module" na arduino ide
+// ESP32 Dev Module
 
-#include "mapeamento.h" // inclui as funcoes de controle do robo
+#include "mapeamento.h"
 
-void setup() {
+void setup(){
 
-  Serial.begin(115200); // inicia o monitor serial (usar 115200 no monitor da ide)
+  Serial.begin(115200);
   Serial.println("robo iniciando...");
 
-  iniciarPinos(); // configura entradas e saidas
-  calibrarSensores(); // para calibrar, deve passar os sensores sobre a linha e o chao branco
+  iniciarPinos();
+  controlarMotores(0, 0);
 
-  // apos calibrar, o robo espera o botao para comecar
+  // durante a calibracao, passar os dois sensores sobre a linha e chao
 
-  Serial.println("pronto! aperte o botao para ligar o robo");
+  if (!calibrarSensores()){
+
+    // led aceso = FALHA
+    Serial.println("calibrar de novo");
+    digitalWrite(PINO_LED, HIGH);
+
+    while (true){
+      delay(100);
+
+    }
+  }
+
+  Serial.println("calibracao concluida, aperte o botao para ligar o robo");
 
 }
 
-void loop() {
+void loop(){
 
-  verificarBotao(); // ve o estado do botao
+  verificarBotao();
+  lerSensores();
 
-  if (roboLigado) {
+  if (roboLigado){
 
-    // se o robo estiver ligado, ele le os sensores e ajusta os motores
-
-    lerSensores(); // atualiza leituraEsq e leituraDir
-    controleProporcional(); // calcula o erro e ajusta motores
+    controlePD();
 
   } else {
 
-    // se o robo estiver desligado, ele para os motores
-
     controlarMotores(0, 0);
-
+    
   }
 }
