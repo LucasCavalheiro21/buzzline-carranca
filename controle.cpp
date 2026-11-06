@@ -48,10 +48,21 @@ bool calibrarSensores(){
     int esq = analogRead(PINO_SENSOR_ESQ);
     int dir = analogRead(PINO_SENSOR_DIR);
 
-    if (esq < minEsq) minEsq = esq;
-    if (esq > maxEsq) maxEsq = esq;
-    if (dir < minDir) minDir = dir;
-    if (dir > maxDir) maxDir = dir;
+    if (esq < minEsq){
+      minEsq = esq;
+    }
+
+    if (esq > maxEsq){
+      maxEsq = esq;
+    }
+
+    if (dir < minDir){
+      minDir = dir;
+    }
+
+    if (dir > maxDir){
+      maxDir = dir;
+    }
 
     digitalWrite(PINO_LED, (millis() / 250) % 2); // pisca o led
 
@@ -103,8 +114,17 @@ int normalizar(int bruto, int minimo, int maximo){
 
   int valor = constrain(map(bruto, minimo, maximo, 0, 100), 0, 100);
 
-  if (!PRETO_E_VALOR_ALTO) valor = 100 - valor; // agora 100 = preto | 0 = branco
-  if (LINHA_BRANCA) valor = 100 - valor; // agora 100 = linha | 0 = chao
+  // agora 100 = preto | 0 = branco
+
+  if (!PRETO_E_VALOR_ALTO){
+    valor = 100 - valor;
+  }
+
+  // agora 100 = linha | 0 = chao
+
+  if (LINHA_BRANCA){
+    valor = 100 - valor;
+  }
 
   return valor;
 
@@ -159,7 +179,12 @@ void controlarMotores(int velEsq, int velDir){
 
 void controlePD(){
 
-  if (millis() - ultimoControle < INTERVALO_CONTROLE) return;
+  // so calcula a cada INTERVALO_CONTROLE ms
+
+  if (millis() - ultimoControle < INTERVALO_CONTROLE){
+    return;
+  }
+
   ultimoControle = millis();
 
   // erro > 0 = sensor ESQUERDO ve a linha -> linha a esquerda -> vira para a esquerda
@@ -204,7 +229,13 @@ void verificarBotao(){
 
   bool leitura = digitalRead(PINO_BOTAO);
 
-  if (leitura != ultimaLeituraBotao) instanteMudancaBotao = millis();
+  // o sinal mudou: comeca a contar o tempo
+
+  if (leitura != ultimaLeituraBotao){
+
+    instanteMudancaBotao = millis();
+    
+  }
 
   // so aceita a mudanca se o sinal ficou parado por TEMPO_DEBOUNCE ms
 

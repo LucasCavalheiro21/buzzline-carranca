@@ -15,10 +15,12 @@ void setup(){
   if (!calibrarSensores()){
 
     // led aceso = FALHA
+
     Serial.println("calibrar de novo");
     digitalWrite(PINO_LED, HIGH);
 
     while (true){
+      
       delay(100);
 
     }
