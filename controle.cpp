@@ -4,24 +4,21 @@
 
 int minEsq = 4095, maxEsq = 0; // calibracao do sensor esquerdo
 int minDir = 4095, maxDir = 0; // calibracao do sensor direito
-int leituraEsq = 0; // valor normalizado (0 a 100)
-int leituraDir = 0; // 100 = em cima da LINHA, 0 = em cima do CHAO
+int leituraEsq = 0; // 100 = em cima da LINHA, 0 = em cima do CHAO
+int leituraDir = 0;
 bool roboLigado = false; // true = andando, false = parado
 
 RockyMotors motores; // A = esquerdo | B = direito
 
-// memoria do controle
-
-int erroAnterior = 0; // erro do calculo anterior 
+int erroAnterior = 0; // erro do calculo anterior
 unsigned long ultimoControle = 0; // ultima vez que o controle foi calculado
+unsigned long ultimoPrint = 0; // ultima vez que mostrou algo no serial
 
 // memoria do botao
 
 bool ultimaLeituraBotao = HIGH;
 bool estadoBotao = HIGH;
 unsigned long instanteMudancaBotao = 0;
-unsigned long ultimoPrintSensores = 0; // ultima vez que mostrou os sensores no serial
-unsigned long ultimoPrintMotores = 0; // ultima vez que mostrou os motores no serial
 
 // pinos
 
@@ -30,9 +27,6 @@ void iniciarPinos(){
   pinMode(PINO_BOTAO, INPUT_PULLUP); // botao BOOT: LOW quando apertado
   pinMode(PINO_LED, OUTPUT);
   digitalWrite(PINO_LED, LOW); // comeca apagado
-
-  ultimaLeituraBotao = digitalRead(PINO_BOTAO);
-  estadoBotao = ultimaLeituraBotao;
 
   Serial.println("pinos configurados");
 
@@ -47,15 +41,15 @@ bool calibrarSensores(){
   Serial.println(LINHA_BRANCA ? "arena: linha BRANCA em chao PRETO" : "arena: linha PRETA em chao BRANCO");
   Serial.println("calibracao iniciada: passe os sensores sobre a linha e chao");
 
-  unsigned long inicio = millis(); 
+  unsigned long inicio = millis();
 
   while (millis() - inicio < TEMPO_CALIBRACAO){
 
     int esq = analogRead(PINO_SENSOR_ESQ);
     int dir = analogRead(PINO_SENSOR_DIR);
 
-    if (esq < minEsq) minEsq = esq; 
-    if (esq > maxEsq) maxEsq = esq; 
+    if (esq < minEsq) minEsq = esq;
+    if (esq > maxEsq) maxEsq = esq;
     if (dir < minDir) minDir = dir;
     if (dir > maxDir) maxDir = dir;
 
@@ -69,7 +63,6 @@ bool calibrarSensores(){
 
   // mostra o resultado da calibracao
 
-  Serial.println("calibracao concluida");
   Serial.print("sensor esquerdo -> min: ");
   Serial.print(minEsq);
   Serial.print(" | max: ");
@@ -103,37 +96,33 @@ bool calibrarSensores(){
 
 // sensores
 
-void lerSensores() 
+// transforma o valor bruto em 0 a 100 (100 = LINHA | 0 = CHAO)
+// serve para os dois sensores, so muda o min e max
+
+int normalizar(int bruto, int minimo, int maximo){
+
+  int valor = constrain(map(bruto, minimo, maximo, 0, 100), 0, 100);
+
+  if (!PRETO_E_VALOR_ALTO) valor = 100 - valor; // agora 100 = preto | 0 = branco
+  if (LINHA_BRANCA) valor = 100 - valor; // agora 100 = linha | 0 = chao
+
+  return valor;
+
+}
+
+void lerSensores(){
 
   int brutoEsq = analogRead(PINO_SENSOR_ESQ);
   int brutoDir = analogRead(PINO_SENSOR_DIR);
 
-  // converte para 0 a 100 
+  leituraEsq = normalizar(brutoEsq, minEsq, maxEsq);
+  leituraDir = normalizar(brutoDir, minDir, maxDir);
 
-  leituraEsq = constrain(map(brutoEsq, minEsq, maxEsq, 0, 100), 0, 100);
-  leituraDir = constrain(map(brutoDir, minDir, maxDir, 0, 100), 0, 100);
+  // com o robo parado, mostra os sensores no serial
 
-  // 100 = preto | 0 = branco
+  if (!roboLigado && millis() - ultimoPrint >= TEMPO_SERIAL){
 
-  if (!PRETO_E_VALOR_ALTO){
-
-    leituraEsq = 100 - leituraEsq;
-    leituraDir = 100 - leituraDir;
-
-  }
-
-  // 100 = LINHA | 0 = CHAO
-
-  if (LINHA_BRANCA){
-
-    leituraEsq = 100 - leituraEsq;
-    leituraDir = 100 - leituraDir;
-
-  }
-
-  if (!roboLigado && millis() - ultimoPrintSensores >= TEMPO_SERIAL){
-
-    ultimoPrintSensores = millis();
+    ultimoPrint = millis();
 
     Serial.print("bruto esq: ");
     Serial.print(brutoEsq);
@@ -156,6 +145,8 @@ void controlarMotores(int velEsq, int velDir){
   velEsq = constrain(velEsq, -255, 255);
   velDir = constrain(velDir, -255, 255);
 
+  // a biblioteca da rocky usa -100 a 100
+
   velEsq = map(velEsq, -255, 255, -100, 100);
   velDir = map(velDir, -255, 255, -100, 100);
 
@@ -164,17 +155,11 @@ void controlarMotores(int velEsq, int velDir){
 
 }
 
-// controles
-
-void reiniciarControle(){
-  erroAnterior = 0;
-  ultimoControle = 0;
-
-}
+// controle
 
 void controlePD(){
 
-  if (millis() - ultimoControle < (unsigned long)INTERVALO_CONTROLE) return;
+  if (millis() - ultimoControle < INTERVALO_CONTROLE) return;
   ultimoControle = millis();
 
   // erro > 0 = sensor ESQUERDO ve a linha -> linha a esquerda -> vira para a esquerda
@@ -188,17 +173,16 @@ void controlePD(){
   float correcao = KP * erro + KD * (erro - erroAnterior);
   erroAnterior = erro;
 
-  int velEsq = VELOCIDADE_BASE - (int)correcao;
-  int velDir = VELOCIDADE_BASE + (int)correcao;
-
-  velEsq = constrain(velEsq, VELOCIDADE_MINIMA, 255);
-  velDir = constrain(velDir, VELOCIDADE_MINIMA, 255);
+  int velEsq = constrain(VELOCIDADE_BASE - (int)correcao, VELOCIDADE_MINIMA, 255);
+  int velDir = constrain(VELOCIDADE_BASE + (int)correcao, VELOCIDADE_MINIMA, 255);
 
   controlarMotores(velEsq, velDir);
 
-  if (millis() - ultimoPrintMotores >= TEMPO_SERIAL){
+  // com o robo andando, mostra o controle no serial
 
-    ultimoPrintMotores = millis();
+  if (millis() - ultimoPrint >= TEMPO_SERIAL){
+
+    ultimoPrint = millis();
 
     Serial.print("esq: ");
     Serial.print(leituraEsq);
@@ -222,7 +206,9 @@ void verificarBotao(){
 
   if (leitura != ultimaLeituraBotao) instanteMudancaBotao = millis();
 
-  if (millis() - instanteMudancaBotao >= (unsigned long)TEMPO_DEBOUNCE && leitura != estadoBotao){
+  // so aceita a mudanca se o sinal ficou parado por TEMPO_DEBOUNCE ms
+
+  if (millis() - instanteMudancaBotao >= TEMPO_DEBOUNCE && leitura != estadoBotao){
 
     estadoBotao = leitura;
 
@@ -230,21 +216,13 @@ void verificarBotao(){
 
       roboLigado = !roboLigado;
       digitalWrite(PINO_LED, roboLigado); // led aceso = ligado
+      erroAnterior = 0; // comeca o controle do zero
 
-      if (roboLigado){
+      Serial.println(roboLigado ? "botao apertado: robo LIGADO" : "botao apertado: robo DESLIGADO");
 
-        reiniciarControle();
-        Serial.println("botao apertado: robo LIGADO");
-
-      } else {
-
-        controlarMotores(0, 0);
-        Serial.println("botao apertado: robo DESLIGADO");
-
-      }
     }
   }
 
   ultimaLeituraBotao = leitura;
-  
+
 }

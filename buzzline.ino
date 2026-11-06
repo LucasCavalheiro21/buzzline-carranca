@@ -39,7 +39,7 @@ void loop(){
 
   } else {
 
-    controlarMotores(0, 0);
-    
+    controlarMotores(0, 0); // desligado = parado (tambem para na hora quando aperta o botao)
+
   }
 }
