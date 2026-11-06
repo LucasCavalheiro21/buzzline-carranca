@@ -4,9 +4,6 @@
 
 void setup(){
 
-  Serial.begin(115200);
-  Serial.println("robo iniciando...");
-
   iniciarPinos();
   controlarMotores(0, 0);
 
@@ -14,9 +11,8 @@ void setup(){
 
   if (!calibrarSensores()){
 
-    // led aceso = FALHA
+    // led aceso fixo = FALHA | apertar o reset da placa para calibrar de novo
 
-    Serial.println("calibrar de novo");
     digitalWrite(PINO_LED, HIGH);
 
     while (true){
@@ -26,7 +22,7 @@ void setup(){
     }
   }
 
-  Serial.println("calibracao concluida, aperte o botao para ligar o robo");
+  // led apagado = calibrou certo, aperte o botao para ligar o robo
 
 }
 

@@ -33,7 +33,6 @@ const int SENTIDO_DIR = 1;
 // tempo
 
 const int TEMPO_CALIBRACAO = 8000; // tempo para calibrar
-const int TEMPO_SERIAL = 200; // intervalo entre mensagens
 const int TEMPO_DEBOUNCE = 50; // tempo do botao
 
 // variaveis
