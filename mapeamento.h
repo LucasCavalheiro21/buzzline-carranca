@@ -8,22 +8,22 @@
 
 const int PINO_SENSOR_ESQ = 35;
 const int PINO_SENSOR_DIR = 32;
-const int PINO_BOTAO = 0; // botao BOOT da placa
+const int PINO_BOTAO = 16; // pushbutton entre o pino 16 e o GND
 const int PINO_LED = 15;
 
-// ajustes do controle (mudar um por vez na pista)
+// ajustes do movimento (mudar um por vez na pista)
+// velocidades em % de forca: -100 a 100 | negativo = re
 
-const int VELOCIDADE_BASE = 100; // velocidade na reta (0 a 255)
-const int VELOCIDADE_MINIMA = 0; // menor velocidade de uma roda na curva | negativo = deixa a roda dar re
-const float KP = 1.0; // forca da curva | nao faz a curva = aumentar | samba = diminuir
-const float KD = 0.0; // freio do samba | subir de 2 em 2
-const int INTERVALO_CONTROLE = 10; // ms entre cada calculo do controle
+const int VEL_RETA_ESQ = 65; // reta | se puxar para a direita, aumentar VEL_RETA_DIR (e vice-versa)
+const int VEL_RETA_DIR = 65;
+const int VEL_CURVA_FORA = 65; // roda de fora da curva
+const int VEL_CURVA_DENTRO = -60; // roda de dentro da curva | curva muito brusca = aumentar (ex: -30, 0)
+const int ZONA_MORTA = 500; // diferenca entre os sensores (0 a 4095) que ainda conta como reto | corrige a toa = aumentar
+const int TEMPO_MEMORIA = 100; // ms que continua virando depois que a linha sai do sensor | passa do ponto = diminuir | perde a linha na curva = aumentar
 
 // sensores
 
 const bool LINHA_BRANCA = true; // true = linha branca no chao preto | false = linha preta no chao branco
-const bool PRETO_E_VALOR_ALTO = true; // se o robo fugir da linha em vez de seguir, trocar
-const int CONTRASTE_MINIMO = 300; // diferenca minima entre preto e branco para a calibracao valer
 
 // motores
 
@@ -32,7 +32,6 @@ const int SENTIDO_DIR = 1;
 
 // tempos (ms)
 
-const int TEMPO_CALIBRACAO = 8000;
 const int TEMPO_DEBOUNCE = 50; // tempo para o botao estabilizar
 
 // variavel usada no .ino
@@ -42,10 +41,9 @@ extern bool roboLigado; // true = andando | false = parado
 // funcoes (estao no controle.cpp)
 
 void iniciarPinos();
-bool calibrarSensores(); // true = calibrou certo
 void lerSensores();
-void controlarMotores(int velEsq, int velDir); // -255 a 255 | negativo = re
-void controlePD();
+void controlarMotores(int velEsq, int velDir); // -100 a 100 | negativo = re
+void seguirLinha();
 void verificarBotao(); // liga e desliga o robo
 
 #endif
