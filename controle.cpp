@@ -2,20 +2,15 @@
 
 // variaveis
 
-int leituraEsq = 0; // 0 a 100 | 100 = vendo a linha | 0 = vendo o chao
-int minEsq = 4095; // menor valor lido na calibracao
-int maxEsq = 0; // maior valor lido na calibracao
-
+int leituraEsq = 0; // 0 a 4095 | preto = valor baixo | branco = valor alto
 int leituraDir = 0;
-int minDir = 4095;
-int maxDir = 0;
 
 bool roboLigado = false;
 
 RockyMotors motores; // A = esquerdo | B = direito
 
-int erroAnterior = 0; // erro do ultimo calculo (usado no KD)
-unsigned long ultimoControle = 0; // quando foi o ultimo calculo
+int ultimoLado = 0; // 1 = linha estava a esquerda | -1 = a direita
+unsigned long instanteViuLinha = 0; // ultima vez que um sensor viu a linha
 
 // memoria do botao
 
@@ -33,109 +28,69 @@ void iniciarPinos(){
 
 }
 
-// calibracao: guarda o menor e o maior valor que cada sensor leu
-
-bool calibrarSensores(){
-
-  unsigned long inicio = millis();
-
-  while (millis() - inicio < TEMPO_CALIBRACAO){
-
-    int esq = analogRead(PINO_SENSOR_ESQ);
-    int dir = analogRead(PINO_SENSOR_DIR);
-
-    minEsq = min(minEsq, esq);
-    maxEsq = max(maxEsq, esq);
-    minDir = min(minDir, dir);
-    maxDir = max(maxDir, dir);
-
-    digitalWrite(PINO_LED, (millis() / 250) % 2); // pisca o led
-
-    delay(2);
-
-  }
-
-  digitalWrite(PINO_LED, LOW);
-
-  // so vale se os dois sensores viram o preto e o branco
-
-  return (maxEsq - minEsq >= CONTRASTE_MINIMO) && (maxDir - minDir >= CONTRASTE_MINIMO);
-
-}
-
 // sensores
-
-// converte a leitura para 0 a 100 (100 = linha | 0 = chao)
-
-int normalizar(int bruto, int minimo, int maximo){
-
-  int valor = constrain(map(bruto, minimo, maximo, 0, 100), 0, 100);
-
-  // deixa 100 = preto
-
-  if (!PRETO_E_VALOR_ALTO){
-    valor = 100 - valor;
-  }
-
-  // deixa 100 = linha
-
-  if (LINHA_BRANCA){
-    valor = 100 - valor;
-  }
-
-  return valor;
-
-}
 
 void lerSensores(){
 
-  leituraEsq = normalizar(analogRead(PINO_SENSOR_ESQ), minEsq, maxEsq);
-  leituraDir = normalizar(analogRead(PINO_SENSOR_DIR), minDir, maxDir);
+  leituraEsq = analogRead(PINO_SENSOR_ESQ);
+  leituraDir = analogRead(PINO_SENSOR_DIR);
 
 }
 
-// motores
+// motores (-100 a 100, mesma escala da biblioteca)
 
 void controlarMotores(int velEsq, int velDir){
-
-  // converte de -255/255 para -100/100 (escala da biblioteca)
-
-  velEsq = map(velEsq, -255, 255, -100, 100);
-  velDir = map(velDir, -255, 255, -100, 100);
 
   motores.setSpeedLeft(velEsq * SENTIDO_ESQ);
   motores.setSpeedRight(velDir * SENTIDO_DIR);
 
 }
 
-// controle PD
+// seguir a linha: reto ou curva com forca fixa
 
-void controlePD(){
+void seguirLinha(){
 
-  // so calcula a cada INTERVALO_CONTROLE ms (senao o KD nao funciona)
-
-  if (millis() - ultimoControle < INTERVALO_CONTROLE){
-    return;
-  }
-
-  ultimoControle = millis();
-
-  // positivo = linha a esquerda | negativo = linha a direita | 0 = centralizado
+  // positivo = linha a esquerda | negativo = linha a direita | perto de 0 = centralizado
 
   int erro = leituraEsq - leituraDir;
 
-  // P corrige o erro de agora | D freia se o erro estiver mudando rapido
+  // linha preta: o sensor na linha le MENOS, entao inverte o sinal
 
-  int correcao = KP * erro + KD * (erro - erroAnterior);
-  erroAnterior = erro;
+  if (!LINHA_BRANCA){
+    erro = -erro;
+  }
 
-  // uma roda desacelera e a outra acelera para virar
+  // um sensor ve a linha: guarda o lado e a hora
 
-  int velEsq = constrain(VELOCIDADE_BASE - correcao, VELOCIDADE_MINIMA, 255);
-  int velDir = constrain(VELOCIDADE_BASE + correcao, VELOCIDADE_MINIMA, 255);
+  if (erro > ZONA_MORTA){
 
-  controlarMotores(velEsq, velDir);
+    ultimoLado = 1;
+    instanteViuLinha = millis();
 
+  } else if (erro < -ZONA_MORTA){
+
+    ultimoLado = -1;
+    instanteViuLinha = millis();
+
+  }
+
+  // vendo a linha agora ou ha menos de TEMPO_MEMORIA ms: continua virando
+
+  bool virando = millis() - instanteViuLinha < TEMPO_MEMORIA;
+
+  if (virando && ultimoLado == 1){
+
+    controlarMotores(VEL_CURVA_DENTRO, VEL_CURVA_FORA); // vira para a esquerda
+
+  } else if (virando && ultimoLado == -1){
+
+    controlarMotores(VEL_CURVA_FORA, VEL_CURVA_DENTRO); // vira para a direita
+
+  } else {
+
+    controlarMotores(VEL_RETA_ESQ, VEL_RETA_DIR); // segue reto
+
+  }
 }
 
 // botao: cada aperto liga ou desliga o robo
@@ -162,7 +117,7 @@ void verificarBotao(){
 
       roboLigado = !roboLigado;
       digitalWrite(PINO_LED, roboLigado); // led aceso = ligado
-      erroAnterior = 0; // esquece o erro antigo
+      ultimoLado = 0; // esquece a ultima curva
 
     }
   }
