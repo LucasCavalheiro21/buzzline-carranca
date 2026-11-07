@@ -22,7 +22,7 @@ unsigned long instanteMudancaBotao = 0;
 
 void iniciarPinos(){
 
-  pinMode(PINO_BOTAO, INPUT_PULLUP); // solto = HIGH | apertado = LOW
+  pinMode(PINO_BOTAO, INPUT); // solto = HIGH | apertado = LOW
   pinMode(PINO_LED, OUTPUT);
   digitalWrite(PINO_LED, LOW);
 
