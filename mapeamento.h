@@ -14,10 +14,10 @@ const int PINO_LED = 15;
 // ajustes do movimento
 // velocidades em % de forca: -100 a 100 | negativo = re
 
-const int VEL_RETA_ESQ = 65; // reta | puxa para a direita = aumentar VEL_RETA_DIR
-const int VEL_RETA_DIR = 65; // reta | puxa para a esqueda = aumentar VEL_RETA_ESQ
-const int VEL_CURVA_FORA = 65; // roda de fora da curva
-const int VEL_CURVA_DENTRO = -60; // roda de dentro | negativo = re | curva brusca demais = aumentar
+const int VEL_RETA_ESQ = 70; // reta | puxa para a direita = aumentar VEL_RETA_DIR
+const int VEL_RETA_DIR = 70; // reta | puxa para a esqueda = aumentar VEL_RETA_ESQ
+const int VEL_CURVA_FORA = 70; // roda de fora da curva
+const int VEL_CURVA_DENTRO = -35; // roda de dentro | negativo = re | curva brusca demais = aumentar
 const int ZONA_MORTA = 500; // diferenca entre sensores que ainda conta como reto | corrige a toa = aumentar
 const int TEMPO_MEMORIA = 100; // ms que continua virando apos perder a linha | passa do ponto = diminuir
 
