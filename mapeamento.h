@@ -8,18 +8,18 @@
 
 const int PINO_SENSOR_ESQ = 35;
 const int PINO_SENSOR_DIR = 32;
-const int PINO_BOTAO = 16; // pushbutton entre o pino 16 e o GND
+const int PINO_BOTAO = 16;
 const int PINO_LED = 15;
 
-// ajustes do movimento (mudar um por vez na pista)
+// ajustes do movimento
 // velocidades em % de forca: -100 a 100 | negativo = re
 
-const int VEL_RETA_ESQ = 65; // reta | se puxar para a direita, aumentar VEL_RETA_DIR (e vice-versa)
-const int VEL_RETA_DIR = 65;
+const int VEL_RETA_ESQ = 65; // reta | puxa para a direita = aumentar VEL_RETA_DIR
+const int VEL_RETA_DIR = 65; // reta | puxa para a esqueda = aumentar VEL_RETA_ESQ
 const int VEL_CURVA_FORA = 65; // roda de fora da curva
-const int VEL_CURVA_DENTRO = -60; // roda de dentro da curva | curva muito brusca = aumentar (ex: -30, 0)
-const int ZONA_MORTA = 500; // diferenca entre os sensores (0 a 4095) que ainda conta como reto | corrige a toa = aumentar
-const int TEMPO_MEMORIA = 100; // ms que continua virando depois que a linha sai do sensor | passa do ponto = diminuir | perde a linha na curva = aumentar
+const int VEL_CURVA_DENTRO = -60; // roda de dentro | negativo = re | curva brusca demais = aumentar
+const int ZONA_MORTA = 500; // diferenca entre sensores que ainda conta como reto | corrige a toa = aumentar
+const int TEMPO_MEMORIA = 100; // ms que continua virando apos perder a linha | passa do ponto = diminuir
 
 // sensores
 
@@ -27,7 +27,7 @@ const bool LINHA_BRANCA = true; // true = linha branca no chao preto | false = l
 
 // motores
 
-const int SENTIDO_ESQ = -1; // se a roda girar para tras, trocar o sinal
+const int SENTIDO_ESQ = -1; // roda girando para tras = trocar o sinal
 const int SENTIDO_DIR = 1;
 
 // tempos (ms)
