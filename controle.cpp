@@ -2,7 +2,7 @@
 
 // variaveis
 
-int leituraEsq = 0; // 0 a 4095 | preto = valor baixo | branco = valor alto
+int leituraEsq = 0; // 0 a 4095 | preto = baixo | branco = alto
 int leituraDir = 0;
 
 bool roboLigado = false;
@@ -37,7 +37,7 @@ void lerSensores(){
 
 }
 
-// motores (-100 a 100, mesma escala da biblioteca)
+// motores
 
 void controlarMotores(int velEsq, int velDir){
 
@@ -54,7 +54,7 @@ void seguirLinha(){
 
   int erro = leituraEsq - leituraDir;
 
-  // linha preta: o sensor na linha le MENOS, entao inverte o sinal
+  // linha preta le menos que o chao: inverte o sinal
 
   if (!LINHA_BRANCA){
     erro = -erro;
@@ -74,7 +74,7 @@ void seguirLinha(){
 
   }
 
-  // vendo a linha agora ou ha menos de TEMPO_MEMORIA ms: continua virando
+  // continua virando enquanto ve a linha e por mais TEMPO_MEMORIA ms
 
   bool virando = millis() - instanteViuLinha < TEMPO_MEMORIA;
 
