@@ -68,12 +68,11 @@ void setup(){
 
 void loop(){
 
-  
-  lerSensores();
+  verificarBotao();
 
   if (roboLigado){
     
-    verificarBotao();
+    lerSensores();
     controlePD();
 
   } else {
