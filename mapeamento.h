@@ -62,9 +62,9 @@ const int PINO_LED = 15;
 // ajustes
 
 const int VELOCIDADE_BASE = 150; // velocidade na reta (0 a 255)
-const int VELOCIDADE_MINIMA = 0; // menor velocidade de uma roda na curva | negativo = deixa a roda dar re
+const int VELOCIDADE_MINIMA = 0; // menor velocidade de uma roda na curva
 const float KP = 0.6; // forca da curva | nao faz a curva = aumentar | samba = diminuir
-const float KD = 0.0; // freio do samba | subir de 2 em 2
+const float KD = 0.0; // freio do samba
 const int INTERVALO_CONTROLE = 10; // ms entre cada calculo do controle
 
 // sensores
