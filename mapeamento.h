@@ -29,6 +29,8 @@ const int VELOCIDADE_BASE_CURVA = 110; // velocidade base com erro maximo | igua
 const int LIMIAR_LINHA = 25; // leitura >= isso = sensor ve a linha (0 a 100)
 const int LIMIAR_LADO = 60; // leitura >= isso = guarda o lado da linha | gira a toa na reta = aumentar | perde a curva = diminuir
 const unsigned long MEMORIA_LADO = 300; // ms que o lado guardado vale
+const int LIMIAR_CRUZAMENTO = 70; // os dois sensores >= isso = cruzamento | bem acima do LIMIAR_LINHA para a borda da linha nao contar
+const unsigned long JANELA_CRUZAMENTO = 150; // linha forte num sensor e depois no outro dentro desse tempo = cruzamento torto
 const unsigned long TEMPO_CRUZAMENTO = 200; // ms sem guardar lado depois de um cruzamento
 const unsigned long TEMPO_MAX_CRUZAMENTO = 400; // ms com os dois sensores na linha antes de parar (fora da pista)
 

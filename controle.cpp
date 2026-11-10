@@ -249,7 +249,7 @@ void seguirLinha(){
 
   // cruzamento (os dois na linha): segue reto sem PD | se durar demais, saiu da pista: para
 
-  if (esqVeLinha && dirVeLinha){
+  if (leituraEsq >= LIMIAR_CRUZAMENTO && leituraDir >= LIMIAR_CRUZAMENTO){
 
     if (!noCruzamento){
       noCruzamento = true;
@@ -277,14 +277,29 @@ void seguirLinha(){
 
   if (millis() - instanteCruzamento >= TEMPO_CRUZAMENTO){
 
+    int ladoForte = LADO_NENHUM;
+
     if (leituraEsq >= LIMIAR_LADO && leituraEsq > leituraDir){
-      ultimoLado = LADO_ESQUERDA;
-      instanteUltimoLado = millis();
+      ladoForte = LADO_ESQUERDA;
     } else if (leituraDir >= LIMIAR_LADO && leituraDir > leituraEsq){
-      ultimoLado = LADO_DIREITA;
-      instanteUltimoLado = millis();
+      ladoForte = LADO_DIREITA;
     }
 
+    if (ladoForte != LADO_NENHUM){
+
+      if (ultimoLado == -ladoForte && millis() - instanteUltimoLado <= JANELA_CRUZAMENTO){
+
+        // a linha passou forte por um sensor e logo depois pelo outro: cruzamento torto, nao curva
+        ultimoLado = LADO_NENHUM;
+        instanteCruzamento = millis();
+
+      } else {
+
+        ultimoLado = ladoForte;
+        instanteUltimoLado = millis();
+
+      }
+    }
   }
 
   bool perdeuLinha = !esqVeLinha && !dirVeLinha;
@@ -320,6 +335,15 @@ void seguirLinha(){
     buscandoLinha = false;
     primeiroCalculo = true;
     integralErro = 0;
+
+    // achou logo em seguida com o sensor do OUTRO lado: era um cruzamento torto, nao curva
+
+    bool achouDoOutroLado = (ladoBusca == LADO_DIREITA) ? esqVeLinha : dirVeLinha;
+
+    if (achouDoOutroLado && millis() - inicioBusca <= JANELA_CRUZAMENTO){
+      ultimoLado = LADO_NENHUM;
+      instanteCruzamento = millis();
+    }
 
   }
 
