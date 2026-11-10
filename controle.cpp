@@ -1,10 +1,10 @@
 #include "mapeamento.h"
 
-// variaveis
+// sensores (0 a 100 | 100 = linha)
 
-int leituraEsq = 0; // 0 a 100 | 100 = vendo a linha | 0 = vendo o chao
-int minEsq = 4095; // menor valor lido na calibracao
-int maxEsq = 0; // maior valor lido na calibracao
+int leituraEsq = 0;
+int minEsq = 4095;
+int maxEsq = 0;
 
 int leituraDir = 0;
 int minDir = 4095;
@@ -12,103 +12,109 @@ int maxDir = 0;
 
 bool roboLigado = false;
 
-RockyMotors motores; // A = esquerdo | B = direito
+RockyMotors motores;
 
-int erroAnterior = 0; // erro do ultimo calculo (usado no KD)
-unsigned long ultimoControle = 0; // quando foi o ultimo calculo
+// controle PD
 
-// memoria do botao
+int erroAnterior = 0;
+bool primeiroCalculo = true;
+float integralErro = 0;
+unsigned long ultimoControle = 0;
+
+// lado da linha (mesmo sinal do erro)
+
+const int LADO_NENHUM = 0;
+const int LADO_ESQUERDA = 1;
+const int LADO_DIREITA = -1;
+
+int ultimoLado = LADO_NENHUM;
+unsigned long instanteUltimoLado = 0;
+
+bool buscandoLinha = false;
+int ladoBusca = LADO_NENHUM;
+unsigned long inicioBusca = 0;
+
+bool noCruzamento = false;
+unsigned long inicioCruzamento = 0;
+unsigned long instanteCruzamento = 0;
+
+// botao
 
 bool ultimaLeituraBotao = HIGH;
 bool estadoBotao = HIGH;
 unsigned long instanteMudancaBotao = 0;
 
-// pinos
-
 void iniciarPinos(){
 
-  pinMode(PINO_BOTAO, INPUT); // solto = HIGH | apertado = LOW
+  pinMode(PINO_BOTAO, INPUT_PULLUP); // apertado = LOW
   pinMode(PINO_LED, OUTPUT);
   digitalWrite(PINO_LED, LOW);
 
 }
 
-// calibrar
-// calibracao: guarda o menor e o maior valor que cada sensor leu
+// media de leituras (reduz o ruido do ADC)
 
-bool calibrarSensores(){
-  
+int lerMedia(int pino){
+
+  long soma = 0;
+
+  for (int i = 0; i < AMOSTRAS_SENSOR; i++){
+    soma += analogRead(pino);
+  }
+
+  return soma / AMOSTRAS_SENSOR;
+
+}
+
+// le os sensores por um tempo guardando o menor e o maior valor de cada um
+
+void lerExtremos(unsigned long duracao, int piscada){
+
   unsigned long inicio = millis();
-  bool sinalDisparado = false;
 
-  while (millis() - inicio < TEMPO_CALIBRACAO){
+  while (millis() - inicio < duracao){
 
-    unsigned long tempoDecorrido = millis() - inicio;
-
-    if (tempoDecorrido >= 5000 && !sinalDisparado) {
-
-      digitalWrite(PINO_LED, HIGH);
-      delay(1000); // Mantém o LED aceso fixo por 1 segundo para você mover o robô
-  
-      inicio += 1000; 
-      sinalDisparado = true;
-      continue; // Vai para a próxima iteração do while
-
-    }
-
-    // LEITURA DOS SENSORES
-
-    int esq = analogRead(PINO_SENSOR_ESQ);
-    int dir = analogRead(PINO_SENSOR_DIR);
-
-    // Guarda o menor e o maior valor lido de cada sensor
+    int esq = lerMedia(PINO_SENSOR_ESQ);
+    int dir = lerMedia(PINO_SENSOR_DIR);
 
     minEsq = min(minEsq, esq);
     maxEsq = max(maxEsq, esq);
     minDir = min(minDir, dir);
     maxDir = max(maxDir, dir);
 
-    if (!sinalDisparado) {
-
-      digitalWrite(PINO_LED, (millis() / 250) % 2); // Pisca padrão (250ms)
-
-    } else {
-
-      digitalWrite(PINO_LED, (millis() / 125) % 2); // Pisca mais rápido (125ms) para avisar que é a reta final
-
-    }
+    digitalWrite(PINO_LED, (millis() / piscada) % 2);
 
     delay(2);
 
   }
 
-  digitalWrite(PINO_LED, LOW); // Desliga o LED ao finalizar
+}
 
-  // Confere se os dois sensores viram contraste suficiente entre o preto e o branco
+bool calibrarSensores(){
+
+  lerExtremos(TEMPO_CALIBRACAO / 2, 250);
+
+  // na metade: led aceso por 1 s para mover o robo
+  digitalWrite(PINO_LED, HIGH);
+  delay(1000);
+
+  lerExtremos(TEMPO_CALIBRACAO / 2, 125); // segunda metade: pisca mais rapido
+
+  digitalWrite(PINO_LED, LOW);
+
   return (maxEsq - minEsq >= CONTRASTE_MINIMO) && (maxDir - minDir >= CONTRASTE_MINIMO);
 
 }
 
-
-// sensores
-
-// transforma o valor bruto em 0 a 100 (100 = LINHA | 0 = CHAO)
-// serve para os dois sensores, so muda o min e max
-// converte a leitura para 0 a 100 (100 = linha | 0 = chao)
+// converte o valor bruto para 0 a 100 (100 = linha)
 
 int normalizar(int bruto, int minimo, int maximo){
 
   int valor = constrain(map(bruto, minimo, maximo, 0, 100), 0, 100);
 
-  // agora 100 = preto | 0 = branco
-  // deixa 100 = preto
-
   if (!PRETO_E_VALOR_ALTO){
     valor = 100 - valor;
   }
-
-  // agora 100 = linha | 0 = chao
-  // deixa 100 = linha
 
   if (LINHA_BRANCA){
     valor = 100 - valor;
@@ -120,76 +126,42 @@ int normalizar(int bruto, int minimo, int maximo){
 
 void lerSensores(){
 
-  leituraEsq = normalizar(analogRead(PINO_SENSOR_ESQ), minEsq, maxEsq);
-  leituraDir = normalizar(analogRead(PINO_SENSOR_DIR), minDir, maxDir);
+  leituraEsq = normalizar(lerMedia(PINO_SENSOR_ESQ), minEsq, maxEsq);
+  leituraDir = normalizar(lerMedia(PINO_SENSOR_DIR), minDir, maxDir);
 
 }
 
-// motores
+void reiniciarControle(){
 
-void controlarMotores(int velEsq, int velDir){
-
-  // velocidade positiva = frente | negativa = re | 0 = parado (-255 a 255)
-  // a biblioteca da rocky usa -100 a 100
-  // converte de -255/255 para -100/100 (escala da biblioteca)
-
-  velEsq = map(velEsq, -255, 255, -100, 100);
-  velDir = map(velDir, -255, 255, -100, 100);
-
-  motores.setSpeedLeft(velEsq * SENTIDO_ESQ);
-  motores.setSpeedRight(velDir * SENTIDO_DIR);
+  primeiroCalculo = true;
+  integralErro = 0;
+  ultimoLado = LADO_NENHUM;
+  buscandoLinha = false;
+  noCruzamento = false;
 
 }
 
-// controle PD
+void desligarRobo(){
 
-void controlePD(){
-
-  // so calcula a cada INTERVALO_CONTROLE ms (senao o KD nao funciona)
-
-  if (millis() - ultimoControle < INTERVALO_CONTROLE){
-    return;
-  }
-
-  ultimoControle = millis();
-
-  // erro > 0 = sensor ESQUERDO ve a linha -> linha a esquerda -> vira para a esquerda
-  // erro < 0 = sensor DIREITO ve a linha  -> linha a direita  -> vira para a direita
-  // erro = 0 = os dois veem o chao -> centralizado -> segue reto
-  // positivo = linha a esquerda | negativo = linha a direita | 0 = centralizado
-
-  int erro = leituraEsq - leituraDir;
-
-  // P corrige o erro de agora | D freia se o erro estiver mudando rapido
-
-  int correcao = KP * erro + KD * (erro - erroAnterior);
-  erroAnterior = erro;
-
-  // limita entre VELOCIDADE_MINIMA e 255
-  // uma roda desacelera e a outra acelera para virar
-
-  int velEsq = constrain(VELOCIDADE_BASE - correcao, VELOCIDADE_MINIMA, 255);
-  int velDir = constrain(VELOCIDADE_BASE + correcao, VELOCIDADE_MINIMA, 255);
-
-  controlarMotores(velEsq, velDir);
+  roboLigado = false;
+  digitalWrite(PINO_LED, LOW);
+  controlarMotores(0, 0);
+  reiniciarControle();
 
 }
 
-// botao: cada aperto liga ou desliga o robo
+// cada aperto liga ou desliga o robo
 
 void verificarBotao(){
-
   bool leitura = digitalRead(PINO_BOTAO);
-
-  // o sinal mudou: comeca a contar o tempo
 
   if (leitura != ultimaLeituraBotao){
 
     instanteMudancaBotao = millis();
-    
+
   }
 
-  // so aceita se o sinal ficou estavel por TEMPO_DEBOUNCE (ignora o tremor do botao)
+  // debounce
 
   if (millis() - instanteMudancaBotao >= TEMPO_DEBOUNCE && leitura != estadoBotao){
 
@@ -198,12 +170,159 @@ void verificarBotao(){
     if (estadoBotao == LOW) {
 
       roboLigado = !roboLigado;
-      digitalWrite(PINO_LED, roboLigado); // led aceso = ligado
-      erroAnterior = 0; // esquece o erro antigo
+      digitalWrite(PINO_LED, roboLigado);
+      reiniciarControle();
 
     }
   }
 
   ultimaLeituraBotao = leitura;
+
+}
+
+// a biblioteca da rocky usa -100 a 100
+
+void controlarMotores(int velEsq, int velDir){
+
+  velEsq = map(constrain(velEsq, -255, 255), -255, 255, -100, 100);
+  velDir = map(constrain(velDir, -255, 255), -255, 255, -100, 100);
+
+  motores.setSpeedLeft(velEsq * SENTIDO_ESQ);
+  motores.setSpeedRight(velDir * SENTIDO_DIR);
+}
+
+// gira no eixo para o lado em que a linha estava
+
+void girarParaLado(int lado){
+
+  if (lado == LADO_ESQUERDA){
+    controlarMotores(VELOCIDADE_BUSCA_DENTRO, VELOCIDADE_BUSCA_FORA);
+  } else {
+    controlarMotores(VELOCIDADE_BUSCA_FORA, VELOCIDADE_BUSCA_DENTRO);
+  }
+
+}
+
+void controlePID(){
+
+  // positivo = linha a esquerda | negativo = linha a direita
+  int erro = leituraEsq - leituraDir;
+
+  if (primeiroCalculo){
+    erroAnterior = erro; // evita tranco do D
+    primeiroCalculo = false;
+  }
+
+  integralErro = constrain(integralErro + erro, -LIMITE_INTEGRAL, LIMITE_INTEGRAL);
+
+  float P = KP * erro;
+  float I = KI * integralErro;
+  float D = KD * (erro - erroAnterior);
+  int correcao = P + I + D;
+
+  erroAnterior = erro;
+
+  // reduz a velocidade na curva
+  int velBase = map(abs(erro), 0, 100, VELOCIDADE_BASE, VELOCIDADE_BASE_CURVA);
+
+  int velEsq = constrain(velBase - correcao, VELOCIDADE_MINIMA, 255);
+  int velDir = constrain(velBase + correcao, VELOCIDADE_MINIMA, 255);
+
+  controlarMotores(velEsq, velDir);
+}
+
+// a linha fica entre os sensores: os dois no chao pode ser "centralizado" ou "perdido na curva"
+// o lado guardado diferencia os dois casos
+
+void seguirLinha(){
+
+  if (millis() - ultimoControle < INTERVALO_CONTROLE){
+    return;
+  }
+
+  ultimoControle = millis();
+
+  lerSensores();
+
+  bool esqVeLinha = leituraEsq >= LIMIAR_LINHA;
+  bool dirVeLinha = leituraDir >= LIMIAR_LINHA;
+
+  // cruzamento (os dois na linha): segue reto sem PD | se durar demais, saiu da pista: para
+
+  if (esqVeLinha && dirVeLinha){
+
+    if (!noCruzamento){
+      noCruzamento = true;
+      inicioCruzamento = millis();
+    }
+
+    if (millis() - inicioCruzamento > TEMPO_MAX_CRUZAMENTO){
+      desligarRobo();
+      return;
+    }
+
+    instanteCruzamento = millis();
+    ultimoLado = LADO_NENHUM;
+    buscandoLinha = false;
+    primeiroCalculo = true;
+
+    controlarMotores(VELOCIDADE_BASE, VELOCIDADE_BASE);
+    return;
+
+  }
+
+  noCruzamento = false;
+
+  // guarda o lado quando a linha passa forte por um sensor (menos logo apos um cruzamento)
+
+  if (millis() - instanteCruzamento >= TEMPO_CRUZAMENTO){
+
+    if (leituraEsq >= LIMIAR_LADO && leituraEsq > leituraDir){
+      ultimoLado = LADO_ESQUERDA;
+      instanteUltimoLado = millis();
+    } else if (leituraDir >= LIMIAR_LADO && leituraDir > leituraEsq){
+      ultimoLado = LADO_DIREITA;
+      instanteUltimoLado = millis();
+    }
+
+  }
+
+  bool perdeuLinha = !esqVeLinha && !dirVeLinha;
+
+  // perdeu a linha pelo lado de fora da curva: comeca a busca
+
+  if (!buscandoLinha && perdeuLinha &&
+      ultimoLado != LADO_NENHUM &&
+      millis() - instanteUltimoLado <= MEMORIA_LADO){
+
+    buscandoLinha = true;
+    ladoBusca = ultimoLado;
+    inicioBusca = millis();
+    ultimoLado = LADO_NENHUM;
+
+  }
+
+  if (buscandoLinha){
+
+    if (perdeuLinha){
+
+      if (millis() - inicioBusca > TEMPO_MAX_BUSCA){
+        desligarRobo(); // nao achou: para
+      } else {
+        girarParaLado(ladoBusca);
+      }
+
+      return;
+
+    }
+
+    // achou a linha: volta para o PD
+    buscandoLinha = false;
+    primeiroCalculo = true;
+    integralErro = 0;
+
+  }
+
+  controlePID();
 
 }
