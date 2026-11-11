@@ -1,24 +1,26 @@
-// Luiz Gonzigzaga ou Tatu Cego ???????
+// Tatu cego ou Freio do Samba
 // placa: ESP32 Dev Module
 
-// led piscando = calibrando (passar os dois sensores na linha e no chao)
-// led apagado = pronto, aperte o botao
-// led aceso = andando
-// led aceso logo apos calibrar = falha, apertar o reset
-// robo parou e led apagou = perdeu a linha ou saiu da pista, recolocar e apertar o botao
+// LED:
+// piscando = calibrando (passar os dois sensores na linha e no chao)
+// apagado = pronto, aperte o botao
+// aceso = andando
+// aceso logo apos calibrar = calibracao falhou, apertar o reset
 
-#include "mapeamento.h"
+#include "mapeamento.h" // pinos, ajustes e funcoes
 
+// roda uma vez, quando liga a placa
 void setup(){
 
-  iniciarPinos();
-  controlarMotores(0, 0);
+  iniciarPinos(); // configura botao e LED
+  controlarMotores(0, 0); // garante os motores parados
 
+  // calibra os sensores; se falhar, trava aqui
   if (!calibrarSensores()){
 
-    digitalWrite(PINO_LED, HIGH);
+    digitalWrite(PINO_LED, HIGH); // LED aceso = falha
 
-    while (true){
+    while (true){ // fica parado ate apertar o reset
 
       delay(100);
 
@@ -27,17 +29,18 @@ void setup(){
 
 }
 
+// roda sem parar
 void loop(){
 
-  verificarBotao();
+  verificarBotao(); // liga ou desliga o robo
 
   if (roboLigado){
-
-    seguirLinha();
+    lerSensores(); // le os dois sensores
+    controlePD(); // calcula e manda a velocidade das rodas
 
   } else {
 
-    controlarMotores(0, 0);
+    controlarMotores(0, 0); // desligado: motores parados
 
   }
 }

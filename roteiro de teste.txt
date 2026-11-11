@@ -1,275 +1,242 @@
 ROTEIRO DE TESTES - BUZZLINE
 ============================
 
-Todos os valores ficam no mapeamento.h.
+Este roteiro serve para as duas versões do código:
+
+  buzzline/        -> VERSÃO ATUAL. Já testada: 5 voltas completas na velocidade 180.
+                      Ajustes no buzzline/mapeamento.h
+
+  buzzline_curva/  -> VERSÃO CURVA. Igual à atual, mas a correção cresce junto com
+                      a velocidade, para dar para subir a VELOCIDADE_BASE sem passar
+                      reto nas curvas. Tem dois ajustes a mais (VELOCIDADE_AJUSTE e
+                      VELOCIDADE_MINIMA).
+                      Ajustes no buzzline_curva/mapeamento_curva.h
+
+Cada versão tem o SEU arquivo de ajustes. Mexer em um não muda o outro.
+
+Nos problemas abaixo:
+  (as duas)  = vale para as duas versões
+  (só curva) = só existe na versão curva
+
 
 REGRAS
+------
 - Mude UM valor por vez.
 - Teste cada mudança pelo menos 3 vezes no mesmo trecho antes de concluir.
-- Anote o que mudou e o resultado (tabela no fim do arquivo).
+- Anote a versão, o que mudou e o resultado (tabela no fim do arquivo).
 - Sempre teste com a bateria carregada: com a bateria fraca o robô fica mais lento
-  e os ajustes feitos deixam de valer quando ela é trocada.
-- Siga a ordem das etapas: não adianta ajustar curva fechada se a reta ainda samba.
+  e os ajustes deixam de valer quando ela é trocada.
+- Siga a ordem das etapas: não adianta ajustar a curva se a reta ainda samba.
+- O robô NÃO para sozinho se sair da pista: fique perto para pegar ou apertar o botão.
 
 
 VALORES INICIAIS (para voltar se algo der errado)
 -------------------------------------------------
-VELOCIDADE_BASE         = 150
-VELOCIDADE_MINIMA       = -90
-KP                      = 0.6
-KD                      = 1.6
-KI                      = 0.0
-LIMITE_INTEGRAL         = 3000
-VELOCIDADE_BASE_CURVA   = 110
-LIMIAR_LINHA            = 25
-LIMIAR_LADO             = 60
-MEMORIA_LADO            = 300
-LIMIAR_CRUZAMENTO       = 70
-JANELA_CRUZAMENTO       = 150
-TEMPO_CRUZAMENTO        = 200
-TEMPO_MAX_CRUZAMENTO    = 400
-VELOCIDADE_BUSCA_FORA   = 150
-VELOCIDADE_BUSCA_DENTRO = -90
-TEMPO_MAX_BUSCA         = 1200
+As duas versões:
+  VELOCIDADE_BASE      = 180
+  KP                   = 1.0
+  KD                   = 1.6
+  KI                   = 0.01
+  LIMITE_INTEGRAL      = 3000
+  INTERVALO_CONTROLE   = 10
+  LINHA_BRANCA         = true
+  PRETO_E_VALOR_ALTO   = false
+  CONTRASTE_MINIMO     = 300
+  SENTIDO_ESQ          = -1
+  SENTIDO_DIR          = 1
+
+Só a versão curva:
+  VELOCIDADE_AJUSTE    = 180
+  VELOCIDADE_MINIMA    = -VELOCIDADE_BASE
 
 
 ETAPA 0 - GRAVAR O CÓDIGO
 -------------------------
-1. Os três arquivos (buzzline.ino, controle.cpp, mapeamento.h) precisam estar
-   numa pasta chamada "buzzline" (mesmo nome do .ino).
+1. Abrir na Arduino IDE:
+     versão atual -> buzzline/buzzline.ino
+     versão curva -> buzzline_curva/buzzline_curva.ino
 2. Placa: Ferramentas -> Placa -> esp32 -> "ESP32 Dev Module".
-   ATENÇÃO: existem dois pacotes de ESP32 instalados. Usar o "esp32" (Espressif,
-   versão 3.x), NÃO o "Arduino ESP32 Boards" (versão 2.x): a biblioteca da Rocky
-   não funciona com ele.
-3. Biblioteca necessária: "RoboCore - Rocky" (já instalada).
-4. Se aparecer "Failed to connect to ESP32": segurar o botão BOOT da placa quando
+   ATENÇÃO: usar o pacote "esp32" (Espressif, versão 3.x), NÃO o
+   "Arduino ESP32 Boards" (versão 2.x): a biblioteca da Rocky não funciona com ele.
+3. Se aparecer "Failed to connect to ESP32": segurar o botão BOOT da placa quando
    aparecer "Connecting...".
+4. Se aparecer erro "multiple definition" depois de renomear algum arquivo:
+   fechar e abrir a IDE e compilar de novo.
 5. Não alimentar pelo USB e pela bateria ao mesmo tempo.
-6. Conferir a cor da linha (já está certo para a pista do Rec n Play):
+6. Conferir a cor da linha:
      linha BRANCA no chão PRETO  -> LINHA_BRANCA = true   (atual)
      linha PRETA no chão BRANCO  -> LINHA_BRANCA = false
-   Se estiver errado, o robô anda reto e para sozinho depois de meio segundo
-   (ele acha que os dois sensores estão "na linha").
 
 
-ETAPA 1 - CALIBRAÇÃO
---------------------
-Como fazer: ligar o robô e, enquanto o LED pisca, passar os DOIS sensores várias
-vezes por cima da linha e do chão. Na metade, o LED fica aceso 1 s e depois pisca
-mais rápido: continue passando.
-IMPORTANTE: calibrar com o robô APOIADO NAS RODAS, na pista, arrastando de lado
-por cima da linha. Se levantar o robô com a mão, a altura dos sensores muda e
-todos os limiares (LIMIAR_LINHA, LIMIAR_LADO, LIMIAR_CRUZAMENTO) ficam errados.
+ETAPA 1 - CALIBRAÇÃO (as duas)
+------------------------------
+Como fazer: ligar o robô e, enquanto o LED pisca, arrastar o robô de lado várias
+vezes, passando os DOIS sensores por cima da linha e do chão. Na metade, o LED
+fica aceso 1 s e depois pisca mais rápido: continue passando.
+IMPORTANTE: calibrar com o robô APOIADO NAS RODAS, na pista. Se levantar com a mão,
+a altura dos sensores muda e as leituras ficam erradas.
 
 Problema: LED fica aceso fixo depois da calibração (falha)
   -> Os sensores não viram diferença suficiente entre linha e chão.
-  1. Calibrar de novo (reset), passando os sensores bem em cima da linha e do chão.
-  2. Conferir a altura dos sensores (não podem encostar no chão nem ficar muito altos).
+  1. Apertar o reset e calibrar de novo, passando bem em cima da linha e do chão.
+  2. Conferir a altura dos sensores (não podem encostar no chão nem ficar altos).
   3. Conferir se não tem luz forte (sol, refletor) em cima da pista.
   4. Só se nada disso resolver: diminuir CONTRASTE_MINIMO (300 -> 200).
 
 Problema: calibra, mas depois o robô não reconhece a linha direito
-  -> Provavelmente um dos sensores não passou pela linha durante a calibração.
-     Calibrar de novo, garantindo que os dois passam pela linha E pelo chão.
+  -> Um dos sensores não passou pela linha E pelo chão na calibração.
+     Calibrar de novo.
 
 
-ETAPA 2 - CONFERIR O BÁSICO (robô na mão, rodas no ar)
-------------------------------------------------------
+ETAPA 2 - CONFERIR O BÁSICO (as duas)
+-------------------------------------
 Problema: apertar o botão não liga o robô (LED não acende)
-  -> Conferir o PINO_BOTAO. Na documentação vocês chegaram a usar o botão BOOT
+  -> Conferir o PINO_BOTAO. Na documentação chegou a ser usado o botão BOOT
      da placa (pino 0). Se for o caso: PINO_BOTAO = 0.
 
 Problema: uma roda gira para trás quando deveria ir para frente
   -> Trocar o sinal de SENTIDO_ESQ ou SENTIDO_DIR (da roda errada).
 
-Problema: na pista, o robô FOGE da linha em vez de seguir
+Problema: o robô FOGE da linha em vez de seguir
   -> Trocar PRETO_E_VALOR_ALTO (false <-> true).
 
-Problema: o robô anda reto e para sozinho logo depois de ligar, ou segue o chão
-          em vez da linha
-  -> LINHA_BRANCA está com a cor errada (ver etapa 0, item 6).
+Problema: o robô segue o chão em vez da linha
+  -> Trocar LINHA_BRANCA (ver etapa 0, item 6).
 
 
-ETAPA 3 - RETA
---------------
+ETAPA 3 - RETA (as duas)
+------------------------
 Colocar o robô numa reta longa, centralizado, e apertar o botão.
 
 Problema: SAMBA (oscila de um lado para o outro, cada vez mais, até sair)
   1. Aumentar KD (1.6 -> 2.0 -> 2.5).
-  2. Se não resolver, diminuir KP (0.6 -> 0.5 -> 0.4).
-  3. Se ainda sambar: VELOCIDADE_MINIMA = 0 (a roda para de dar ré no PD,
-     a correção fica mais suave. A curva fechada continua coberta pela busca).
-  4. Último caso: diminuir VELOCIDADE_BASE (150 -> 130).
+  2. Se não resolver, diminuir KP (1.0 -> 0.9 -> 0.8).
+  3. Último caso: diminuir VELOCIDADE_BASE (180 -> 160).
 
 Problema: oscila devagar e largo, demora para voltar ao centro
-  -> KP baixo. Aumentar KP (0.6 -> 0.7 -> 0.8).
+  -> Aumentar KP (1.0 -> 1.1 -> 1.2).
 
-Problema: tremedeira rápida e curtinha (o robô "vibra" mas segue a linha)
-  -> KD alto demais. Diminuir KD (1.6 -> 1.3 -> 1.0).
+Problema: tremedeira rápida e curtinha (vibra, mas segue a linha)
+  -> Diminuir KD (1.6 -> 1.3 -> 1.0).
 
-Problema: de vez em quando dá um GIRO NO EIXO sozinho na reta
-  -> A busca está disparando sem o robô ter perdido a linha.
-  1. Aumentar LIMIAR_LADO (60 -> 70 -> 75).
-  2. Se não resolver, diminuir MEMORIA_LADO (300 -> 200).
+Problema: anda sempre um pouco puxado para o mesmo lado
+  1. Conferir a mecânica (roda boba presa, um motor mais fraco).
+  2. O KI ajuda nisso: ver etapa 6.
 
-Problema: anda torto / puxa sempre para o mesmo lado
-  -> Normalmente é mecânico (roda boba presa, um motor mais fraco).
-     Conferir a mecânica antes de mexer no código.
-
-A reta está boa quando: anda até o fim sem sair, sem giros e com pouca oscilação.
+A reta está boa quando: anda até o fim sem sair e com pouca oscilação.
 
 
-ETAPA 4 - CURVAS ABERTAS
-------------------------
-Problema: sai por FORA da curva (não vira o suficiente), mas sem perder a linha de vez
-  1. Diminuir VELOCIDADE_BASE_CURVA (110 -> 90 -> 70).
-  2. Se não resolver, aumentar KP (0.6 -> 0.7).
+ETAPA 4 - CURVAS
+----------------
+Problema: SAI POR FORA da curva (não vira o suficiente)
+  (as duas)
+  1. Aumentar KP (1.0 -> 1.1 -> 1.2).
+  2. Se não resolver, diminuir VELOCIDADE_BASE (180 -> 170 -> 160).
+  (só curva)
+  3. Se a VELOCIDADE_MINIMA estiver em 0 ou -40, voltar para -VELOCIDADE_BASE
+     (a roda de dentro volta a poder dar ré e a curva fica mais fechada).
 
 Problema: faz a curva, mas ao sair dela passa da linha e samba
-  -> Aumentar KD (1.6 -> 2.0).
+  (as duas)
+  1. Aumentar KD (1.6 -> 2.0).
+  2. Se KI > 0, diminuir KI (ver etapa 6).
 
-Problema: na curva aberta faz um giro no eixo desnecessário
-  -> Mesmo caso da reta: aumentar LIMIAR_LADO (60 -> 70).
+Problema: curva BRUSCA (dá trancos, quase gira no lugar)
+  (só curva)
+  1. VELOCIDADE_MINIMA = -40 (a roda de dentro dá no máximo uma ré leve).
+  2. Se ainda brusco: VELOCIDADE_MINIMA = 0 (a roda de dentro no máximo para).
+  (as duas)
+  3. Diminuir KP um pouco (1.0 -> 0.9).
 
-
-ETAPA 5 - CURVAS FECHADAS (as mais apertadas, em U)
----------------------------------------------------
-Como o robô deve fazer: na curva fechada a linha some por fora, o robô gira no
-eixo para o lado da curva, acha a linha e volta a seguir normalmente.
-
-Problema: SAI RETO na curva fechada, sem girar
-  -> A busca não disparou: o robô não guardou de que lado a linha estava.
-  1. Diminuir LIMIAR_LADO (60 -> 50 -> 40).
-  2. Aumentar MEMORIA_LADO (300 -> 400 -> 500).
-  3. Diminuir VELOCIDADE_BASE_CURVA (110 -> 90), para chegar mais devagar.
-  ATENÇÃO: se LIMIAR_LADO ficar baixo demais, voltam os giros na reta (etapa 3).
-           Procure o meio-termo.
-
-Problema: gira, mas para o LADO ERRADO
-  -> O lado guardado era antigo (de uma oscilação antes da curva).
-     Diminuir MEMORIA_LADO (300 -> 200).
-
-Problema: VIRA DEMAIS (gira, passa da linha e sai do outro lado ou fica sambando
-          depois da curva)
-  1. Diminuir VELOCIDADE_BUSCA_FORA (150 -> 120 -> 100).
-  2. Aproximar VELOCIDADE_BUSCA_DENTRO de zero (-90 -> -60 -> -30).
-     (menos ré = giro mais aberto e mais suave)
-
-Problema: gira DEVAGAR demais e sai da pista antes de achar a linha
-  1. Aumentar VELOCIDADE_BUSCA_FORA (150 -> 180).
-  2. Deixar VELOCIDADE_BUSCA_DENTRO mais negativo (-90 -> -120).
-     (mais ré = giro mais fechado, quase no próprio eixo)
-
-Problema: gira, mas PARA (LED apaga) antes de achar a linha
-  -> Aumentar TEMPO_MAX_BUSCA (1200 -> 1800 -> 2500).
-
-Problema: acha a linha, mas logo perde de novo e fica girando para lá e para cá
-  -> Mesmo caso do "vira demais": diminuir as velocidades de busca.
-     Se não resolver, aumentar KD (1.6 -> 2.0).
+Problema: perde a linha numa curva e sai RETO
+  -> A linha passou por fora do sensor e o robô ficou sem referência
+     (com os dois sensores no chão ele anda reto).
+  1. Mesmo caso de "sai por fora": aumentar KP ou diminuir VELOCIDADE_BASE.
 
 
-ETAPA 6 - CRUZAMENTOS (ex.: o meio da pista em 8) E FAIXAS
-----------------------------------------------------------
-Como o robô deve fazer: passar pelo cruzamento SEGUINDO RETO, sem trocar de linha.
-No 8, as linhas se cruzam tortas: um sensor pega a linha e logo depois o outro.
-O robô reconhece isso pelo tempo entre os dois (JANELA_CRUZAMENTO).
-Teste o cruzamento várias vezes, entrando pelos dois lados do 8.
+ETAPA 5 - CRUZAMENTO (só se a pista tiver, ex.: pista em 8) (as duas)
+--------------------------------------------------------------------
+Com 2 sensores, no cruzamento torto um sensor pega a linha e logo depois o outro.
+O robô dá uma puxada para um lado e depois para o outro. Isso é normal.
+Teste entrando no cruzamento pelos dois lados do 8.
 
-Problema: no cruzamento do 8, GIRA e pega a outra linha
-  -> A linha passou de um sensor para o outro mais devagar que a janela.
-  1. Aumentar JANELA_CRUZAMENTO (150 -> 200 -> 250).
-  2. Se não resolver, diminuir VELOCIDADE_BASE (150 -> 130) e testar de novo.
+Problema: no cruzamento, pega a outra linha
+  1. Aumentar KD (1.6 -> 2.0): segura a puxada.
+  2. Diminuir KP um pouco (1.0 -> 0.9).
+  3. Diminuir VELOCIDADE_BASE: passar mais devagar.
 
-Problema: sai RETO numa curva fechada logo depois de ter oscilado para o outro lado
-  -> A oscilação + a curva foram confundidas com cruzamento.
-     Diminuir JANELA_CRUZAMENTO (150 -> 100).
-  ATENÇÃO: JANELA_CRUZAMENTO grande ajuda no cruzamento e atrapalha na curva,
-           pequena faz o contrário. Procure o meio-termo.
-
-Problema: no cruzamento, vira forte para um lado mas volta para a linha certa
-  -> Normal com 2 sensores (o primeiro sensor que pega o cruzamento puxa o robô).
-     Só mexer se ele sair da linha: diminuir KP um pouco ou a VELOCIDADE_BASE.
-
-Problema: PARA (LED apaga) num cruzamento ou faixa de largada/chegada
-  -> Aumentar TEMPO_MAX_CRUZAMENTO (400 -> 600 -> 800).
-
-Problema: PARA (LED apaga) na RETA ou numa curva, indo reto
-  -> A borda da linha está sendo contada como cruzamento.
-     Aumentar LIMIAR_CRUZAMENTO (70 -> 80 -> 90).
-     (conferir antes se LINHA_BRANCA está certo, etapa 0)
-
-Problema: logo depois do cruzamento faz um giro no eixo
-  -> Aumentar TEMPO_CRUZAMENTO (200 -> 300).
+Problema: depois do cruzamento sai da linha
+  -> Mesmo caso: aumentar KD.
 
 
-ETAPA 7 - O ROBÔ PAROU SOZINHO
-------------------------------
-Se o LED APAGOU, existem dois motivos, e dá para saber qual foi pelo que ele
-fazia antes de parar:
-  - Estava GIRANDO no eixo  -> não achou a linha na busca (ver etapa 5).
-  - Estava indo RETO        -> os dois sensores viram "linha" por tempo demais
-                               (ver etapa 6, ou saiu da pista para uma área clara).
-Para voltar: colocar na linha e apertar o botão.
+ETAPA 6 - TERMO I (opcional, só com a pista inteira funcionando) (as duas)
+--------------------------------------------------------------------------
+O I soma o erro ao longo do tempo. Ajuda se o robô andar sempre um pouco
+deslocado para o mesmo lado, mas pode atrapalhar na saída das curvas.
+O I é zerado toda vez que o botão liga ou desliga o robô.
 
-Se o LED começou a PISCAR sozinho no meio da pista:
-  -> A placa REINICIOU (voltou para a calibração). Quase sempre é queda de tensão:
-     os motores puxam muita corrente quando invertem o sentido de repente.
-  1. Carregar / trocar a bateria.
-  2. Conferir os fios da bateria (mau contato).
-  3. Se continuar: suavizar as inversões de sentido.
-     VELOCIDADE_MINIMA mais perto de 0 (-90 -> -50 -> 0) e
-     VELOCIDADE_BUSCA_DENTRO mais perto de 0 (-90 -> -50).
-
-
-ETAPA 8 - VELOCIDADE (só depois que tudo acima estiver funcionando)
--------------------------------------------------------------------
-1. Aumentar VELOCIDADE_BASE de 10 em 10 (150 -> 160 -> 170...).
-2. Rodar a pista INTEIRA 3 vezes a cada aumento.
-3. Se começar a errar, voltar ao último valor que completou as 3 voltas.
-   Às vezes dá para subir mais ajustando KD (+) ou VELOCIDADE_BASE_CURVA (-).
-4. Para o Rec n Play, consistência importa mais que velocidade:
-   melhor um pouco mais lento e completando sempre.
-
-
-ETAPA 9 - TERMO I (opcional, só com a pista inteira funcionando)
-----------------------------------------------------------------
-O I soma o erro ao longo do tempo. Com KI = 0 ele fica desligado.
-Pode ajudar se o robô andar sempre um pouco deslocado para o mesmo lado da linha,
-mas costuma atrapalhar na saída das curvas.
-
-1. Anotar os valores que já funcionam (para voltar se piorar).
-2. Testar KI = 0.005.
-3. Rodar a pista inteira 3 vezes, prestando atenção na SAÍDA das curvas.
-
-Problema: depois da curva o robô passa da linha para o outro lado
-  -> O I acumulou demais durante a curva.
-  1. Diminuir KI (0.005 -> 0.002).
-  2. Se não resolver, diminuir LIMITE_INTEGRAL (3000 -> 1500 -> 1000).
+Problema: depois da curva passa da linha para o outro lado
+  1. Diminuir KI (0.01 -> 0.005).
+  2. Se não resolver, diminuir LIMITE_INTEGRAL (3000 -> 1500).
+  3. Se ainda assim atrapalhar: KI = 0 (desliga o I).
 
 Problema: começou a sambar na reta
   -> Diminuir KI ou voltar para 0.
 
-Problema: nenhuma diferença
-  -> Pode subir um pouco (0.005 -> 0.01). Se continuar sem melhora,
-     voltar KI = 0: o I não está ajudando nessa pista.
+
+ETAPA 7 - VELOCIDADE
+--------------------
+VERSÃO ATUAL:
+  1. Subir VELOCIDADE_BASE de 10 em 10 (180 -> 190 -> 200...).
+  2. Rodar a pista INTEIRA 3 vezes a cada aumento.
+  3. Nessa versão, ao subir a velocidade o robô tende a passar reto nas curvas.
+     Dá para compensar um pouco aumentando KP, mas logo começa a sambar.
+  4. Se começar a errar, voltar ao último valor que completou as 3 voltas.
+
+VERSÃO CURVA:
+  1. Primeiro, com VELOCIDADE_BASE = 180, conferir que ela anda IGUAL à atual.
+     Se não andar igual, parar e investigar antes de continuar.
+  2. Subir VELOCIDADE_BASE de 10 em 10 (180 -> 190 -> 200...).
+     NÃO mudar a VELOCIDADE_AJUSTE: ela continua em 180.
+  3. Rodar a pista INTEIRA 3 vezes a cada aumento.
+  4. Se passar reto nas curvas: aumentar KP (1.0 -> 1.1 -> 1.2).
+  5. Se ficar brusco nas curvas: VELOCIDADE_MINIMA = -40 ou 0 (etapa 4).
+  6. Se começar a errar, voltar ao último valor que completou as 3 voltas.
+  Obs.: com VELOCIDADE_MINIMA = -VELOCIDADE_BASE, ela acompanha a base
+        automaticamente. Se colocar um número (ex.: -40), ele fica fixo.
+
+Para o Rec n Play, consistência importa mais que velocidade: melhor um pouco mais
+lento e completando sempre.
 
 
-QUANDO É PRECISO MEXER NO CÓDIGO (controle.cpp)
------------------------------------------------
-Quase tudo se resolve com os valores do mapeamento.h. Só é preciso mudar código se:
-  - A pista tiver algo que o robô não trata: marcadores (ex.: quadrados verdes),
-    obstáculos, rampa, ou uma marca de chegada onde ele deveria parar.
-    (linha tracejada numa reta funciona sem mudar nada)
-  - Os giros na reta (etapa 3) e a saída reto na curva fechada (etapa 5) não tiverem
-    um LIMIAR_LADO que resolva os dois ao mesmo tempo, mesmo mexendo também em
-    MEMORIA_LADO e VELOCIDADE_BASE_CURVA.
-  - A placa reiniciar (etapa 7) mesmo com a bateria boa e as velocidades de ré
-    reduzidas: aí dá para fazer a velocidade dos motores mudar aos poucos.
-Nesses casos, anotar exatamente o que acontece e em que trecho da pista.
+ETAPA 8 - OUTROS PROBLEMAS (as duas)
+------------------------------------
+Problema: saiu da pista e continuou andando
+  -> Normal nessas versões: não existe parada automática. Apertar o botão.
+     Ver em qual trecho saiu e voltar para a etapa daquele trecho.
+
+Problema: o LED começou a PISCAR sozinho no meio da pista
+  -> A placa REINICIOU (voltou para a calibração). Quase sempre é queda de tensão
+     quando os motores invertem o sentido de repente.
+  1. Carregar / trocar a bateria.
+  2. Conferir os fios da bateria (mau contato).
+  3. (só curva) VELOCIDADE_MINIMA = -40 ou 0 (menos ré = menos pico de corrente).
+  4. (as duas) diminuir KP um pouco (correções menos bruscas).
+
+
+COMPARAR AS DUAS VERSÕES
+------------------------
+Na mesma bateria e na mesma pista, rodar cada versão 3 vezes e anotar:
+  - completou a volta? quantas vezes de 3?
+  - onde errou (qual curva / cruzamento)?
+  - tempo da volta (cronômetro do celular)
+Escolher para o evento a versão que completa SEMPRE. Entre duas que completam
+sempre, a mais rápida.
 
 
 TESTE FINAL (antes do evento)
 -----------------------------
+[ ] Versão escolhida: ______________________
 [ ] Bateria carregada
 [ ] Calibrou na primeira tentativa
 [ ] 5 voltas completas seguidas sem intervenção
@@ -279,31 +246,25 @@ TESTE FINAL (antes do evento)
 
 REGISTRO DOS TESTES
 -------------------
-Data | Valor mudado (de -> para) | Trecho testado | Resultado
------|---------------------------|----------------|----------
-     |                           |                |
-     |                           |                |
-     |                           |                |
-     |                           |                |
-     |                           |                |
+Data | Versão (atual/curva) | Valor mudado (de -> para) | Trecho | Voltas (de 3) | Tempo | Resultado
+-----|---------------------|---------------------------|--------|---------------|-------|----------
+     |                     |                           |        |               |       |
+     |                     |                           |        |               |       |
+     |                     |                           |        |               |       |
+     |                     |                           |        |               |       |
+     |                     |                           |        |               |       |
+     |                     |                           |        |               |       |
 
 
 VALORES FINAIS
 --------------
-VELOCIDADE_BASE         =
-VELOCIDADE_MINIMA       =
-KP                      =
-KD                      =
-KI                      =
-LIMITE_INTEGRAL         =
-VELOCIDADE_BASE_CURVA   =
-LIMIAR_LINHA            =
-LIMIAR_LADO             =
-MEMORIA_LADO            =
-VELOCIDADE_BUSCA_FORA   =
-VELOCIDADE_BUSCA_DENTRO =
-TEMPO_MAX_BUSCA         =
-LIMIAR_CRUZAMENTO       =
-JANELA_CRUZAMENTO       =
-TEMPO_MAX_CRUZAMENTO    =
-LINHA_BRANCA            =
+                       VERSÃO ATUAL     VERSÃO CURVA
+VELOCIDADE_BASE      = ____________     ____________
+KP                   = ____________     ____________
+KD                   = ____________     ____________
+KI                   = ____________     ____________
+LIMITE_INTEGRAL      = ____________     ____________
+VELOCIDADE_AJUSTE    =      --          ____________
+VELOCIDADE_MINIMA    =      --          ____________
+LINHA_BRANCA         = ____________     ____________
+Tempo de volta       = ____________     ____________
