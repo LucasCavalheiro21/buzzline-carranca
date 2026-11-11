@@ -1,0 +1,244 @@
+ROTEIRO DE TESTES - FREIO DO SAMBA
+==================================
+
+Código: pasta freio_do_samba_definitivo/ (versão que completou a pista toda)
+Ajustes: freio_do_samba_definitivo/mapeamento.h
+
+
+REGRAS
+------
+- Mude UM valor por vez.
+- Teste cada mudança pelo menos 3 vezes no mesmo trecho antes de concluir.
+- Anote o que mudou e o resultado (tabela no fim do arquivo).
+- Sempre teste com a bateria carregada: com a bateria fraca o robô fica mais lento
+  e os ajustes deixam de valer quando ela é trocada.
+- Siga a ordem das etapas: não adianta ajustar a curva se a reta ainda samba.
+- O robô NÃO para sozinho se sair da pista: fique perto para pegar ou apertar o botão.
+
+
+VALORES QUE COMPLETARAM A PISTA (para voltar se algo der errado)
+----------------------------------------------------------------
+VELOCIDADE_BASE      = 195
+KP                   = 1.6
+KD                   = 2.25
+KI                   = 0.01
+LIMITE_INTEGRAL      = 3000
+INTERVALO_CONTROLE   = 10
+PINO_BOTAO           = 0      (botão BOOT da placa)
+LINHA_BRANCA         = true
+PRETO_E_VALOR_ALTO   = false
+CONTRASTE_MINIMO     = 300
+SENTIDO_ESQ          = -1
+SENTIDO_DIR          = 1
+
+
+ETAPA 0 - GRAVAR O CÓDIGO
+-------------------------
+1. Abrir na Arduino IDE: freio_do_samba_definitivo/freio_do_samba_definitivo.ino
+2. Placa: Ferramentas -> Placa -> esp32 -> "ESP32 Dev Module".
+   ATENÇÃO: usar o pacote "esp32" (Espressif, versão 3.x), NÃO o
+   "Arduino ESP32 Boards" (versão 2.x): a biblioteca da Rocky não funciona com ele.
+3. Biblioteca necessária: "RoboCore - Rocky".
+4. Se aparecer "Failed to connect to ESP32": segurar o botão BOOT da placa quando
+   aparecer "Connecting...".
+5. Se aparecer erro "multiple definition" depois de renomear algum arquivo:
+   fechar e abrir a IDE e compilar de novo.
+6. Não alimentar pelo USB e pela bateria ao mesmo tempo.
+7. Conferir a cor da linha:
+     linha BRANCA no chão PRETO  -> LINHA_BRANCA = true   (atual)
+     linha PRETA no chão BRANCO  -> LINHA_BRANCA = false
+
+
+ETAPA 1 - LIGAR E CALIBRAR
+--------------------------
+1. Ligar a chave. O LED pisca: é a calibração (10 segundos).
+2. Enquanto o LED pisca, arrastar o robô de lado várias vezes, passando os DOIS
+   sensores por cima da linha e do chão.
+3. Na metade, o LED fica aceso 1 s e depois pisca mais rápido: continue passando.
+4. LED apagou = calibrou. Colocar o robô na linha e apertar o botão.
+
+IMPORTANTE:
+- Calibrar com o robô APOIADO NAS RODAS, na pista. Se levantar com a mão,
+  a altura dos sensores muda e as leituras ficam erradas.
+- Apertar o botão DURANTE a calibração não faz nada. Espere o LED apagar.
+- NÃO segurar o botão BOOT enquanto liga a chave: a placa entra no modo de
+  gravação e o robô não funciona (desligar e ligar de novo, sem apertar).
+
+LED:
+  piscando                      = calibrando
+  apagado                       = pronto, aperte o botão
+  aceso                         = andando
+  aceso logo depois de calibrar = calibração falhou (ver abaixo)
+
+Problema: LED fica aceso fixo depois da calibração (falha)
+  -> Os sensores não viram diferença suficiente entre linha e chão.
+     Nesse estado o botão não funciona: tem que apertar o reset.
+  1. Apertar o reset e calibrar de novo, passando bem em cima da linha e do chão.
+  2. Conferir a altura dos sensores (não podem encostar no chão nem ficar altos).
+  3. Conferir se não tem luz forte (sol, refletor) em cima da pista.
+  4. Só se nada disso resolver: diminuir CONTRASTE_MINIMO (300 -> 200).
+
+Problema: calibra, mas depois o robô não reconhece a linha direito
+  -> Um dos sensores não passou pela linha E pelo chão na calibração.
+     Calibrar de novo.
+
+
+ETAPA 2 - BOTÃO
+---------------
+Hoje o robô usa o botão BOOT da placa (PINO_BOTAO = 0), que funciona sempre.
+O botão do robô (pino 16) estava falhando: às vezes não ligava, às vezes ligava
+e não desligava. Isso é físico (ligação ou botão), não código.
+
+Para voltar a usar o botão do pino 16, pedir para a mecânica/eletrônica conferir:
+  1. Os três fios do botão (VCC, GND e sinal): jumper frouxo, conector folgado,
+     solda fria, fio partido por dentro.
+  2. Em qual tensão o VCC do botão está ligado: TEM que ser 3,3 V.
+     Se estiver no 5 V, cada aperto manda 5 V para o pino e estraga ele com o tempo.
+     Se o pino 16 já estiver estragado, ligar em outro pino livre.
+  3. O próprio botão (desgastado = troca).
+  Teste com multímetro no fio de sinal: solto = valor fixo, apertado = o outro valor.
+  Se oscilar ou mudar mexendo no fio = mau contato.
+
+Depois de consertado: no mapeamento.h, PINO_BOTAO = 16 (ou o pino novo).
+Deixar o pinMode como está (INPUT).
+
+Problema: o robô liga sozinho logo depois da calibração (com o pino 16)
+  -> O botão manda HIGH quando apertado (contrário do BOOT). Avisar para ajustar
+     o código.
+
+
+ETAPA 3 - CONFERIR O BÁSICO
+---------------------------
+Problema: uma roda gira para trás quando deveria ir para frente
+  -> Trocar o sinal de SENTIDO_ESQ ou SENTIDO_DIR (da roda errada).
+
+Problema: o robô FOGE da linha em vez de seguir
+  -> Trocar PRETO_E_VALOR_ALTO (false <-> true).
+
+Problema: o robô segue o chão em vez da linha
+  -> Trocar LINHA_BRANCA (ver etapa 0, item 7).
+
+
+ETAPA 4 - RETA
+--------------
+Colocar o robô numa reta longa, centralizado, e apertar o botão.
+
+Problema: SAMBA (oscila de um lado para o outro, cada vez mais, até sair)
+  1. Aumentar KD (2.25 -> 2.6 -> 3.0).
+  2. Se não resolver, diminuir KP (1.6 -> 1.4 -> 1.2).
+  3. Último caso: diminuir VELOCIDADE_BASE (195 -> 180).
+
+Problema: oscila devagar e largo, demora para voltar ao centro
+  -> Aumentar KP (1.6 -> 1.8).
+
+Problema: tremedeira rápida e curtinha (vibra, mas segue a linha)
+  -> Diminuir KD (2.25 -> 1.9 -> 1.6).
+
+Problema: anda sempre um pouco puxado para o mesmo lado
+  1. Conferir a mecânica (roda boba presa, um motor mais fraco).
+  2. O KI ajuda nisso: ver etapa 7.
+
+
+ETAPA 5 - CURVAS
+----------------
+Problema: SAI POR FORA da curva (não vira o suficiente)
+  1. Aumentar KP (1.6 -> 1.8 -> 2.0).
+  2. Se não resolver, diminuir VELOCIDADE_BASE (195 -> 185 -> 175).
+
+Problema: perde a linha numa curva e sai RETO
+  -> A linha passou por fora do sensor. Com os dois sensores no chão o robô
+     anda reto. Mesmo caso de "sai por fora".
+
+Problema: faz a curva, mas ao sair dela passa da linha e samba
+  1. Aumentar KD (2.25 -> 2.6).
+  2. Diminuir KI (ver etapa 7).
+
+Problema: curva BRUSCA (dá trancos, quase gira no lugar)
+  -> Diminuir KP um pouco (1.6 -> 1.4) ou aumentar KD.
+
+
+ETAPA 6 - CRUZAMENTO (só se a pista tiver, ex.: pista em 8)
+-----------------------------------------------------------
+Com 2 sensores, no cruzamento torto um sensor pega a linha e logo depois o outro.
+O robô dá uma puxada para um lado e depois para o outro. Isso é normal.
+Teste entrando no cruzamento pelos dois lados do 8.
+
+Problema: no cruzamento, pega a outra linha
+  1. Aumentar KD (2.25 -> 2.6): segura a puxada.
+  2. Diminuir KP um pouco (1.6 -> 1.4).
+  3. Diminuir VELOCIDADE_BASE: passar mais devagar.
+
+
+ETAPA 7 - TERMO I (opcional)
+----------------------------
+O I soma o erro ao longo do tempo. Ajuda se o robô andar sempre um pouco
+deslocado para o mesmo lado, mas pode atrapalhar na saída das curvas.
+O I é zerado toda vez que o botão liga ou desliga o robô.
+
+Problema: depois da curva passa da linha para o outro lado
+  1. Diminuir KI (0.01 -> 0.005).
+  2. Se não resolver, diminuir LIMITE_INTEGRAL (3000 -> 1500).
+  3. Se ainda assim atrapalhar: KI = 0 (desliga o I).
+
+Problema: começou a sambar na reta
+  -> Diminuir KI ou voltar para 0.
+
+
+ETAPA 8 - VELOCIDADE (só com a pista inteira funcionando)
+---------------------------------------------------------
+1. Subir VELOCIDADE_BASE de 5 em 5 (195 -> 200 -> 205...).
+2. Rodar a pista INTEIRA 3 vezes a cada aumento.
+3. Ao subir a velocidade, o robô tende a passar reto nas curvas: compensar
+   aumentando KP um pouco (+0.1 a +0.2). Se começar a sambar, aumentar KD.
+4. Se começar a errar, voltar ao último valor que completou as 3 voltas.
+
+Para o Rec n Play, consistência importa mais que velocidade: melhor um pouco mais
+lento e completando sempre.
+
+
+ETAPA 9 - OUTROS PROBLEMAS
+--------------------------
+Problema: saiu da pista e continuou andando
+  -> Normal: não existe parada automática. Apertar o botão.
+     Ver em qual trecho saiu e voltar para a etapa daquele trecho.
+
+Problema: o LED começou a PISCAR sozinho no meio da pista
+  -> A placa REINICIOU (voltou para a calibração). Quase sempre é queda de tensão
+     quando os motores invertem o sentido de repente.
+  1. Carregar / trocar a bateria.
+  2. Conferir os fios da bateria (mau contato).
+  3. Diminuir KP um pouco (correções menos bruscas).
+
+
+TESTE FINAL (antes do evento)
+-----------------------------
+[ ] Bateria carregada
+[ ] Calibrou na primeira tentativa
+[ ] Botão liga e desliga sempre (5 vezes seguidas)
+[ ] 5 voltas completas seguidas sem intervenção
+[ ] Testado também com a bateria mais fraca (fim do dia)
+[ ] Valores finais anotados abaixo e código salvo (commit)
+
+
+REGISTRO DOS TESTES
+-------------------
+Data | Valor mudado (de -> para) | Trecho | Voltas (de 3) | Tempo | Resultado
+-----|---------------------------|--------|---------------|-------|----------
+     |                           |        |               |       |
+     |                           |        |               |       |
+     |                           |        |               |       |
+     |                           |        |               |       |
+     |                           |        |               |       |
+     |                           |        |               |       |
+
+
+VALORES FINAIS
+--------------
+VELOCIDADE_BASE      =
+KP                   =
+KD                   =
+KI                   =
+LIMITE_INTEGRAL      =
+PINO_BOTAO           =
+LINHA_BRANCA         =
+Tempo de volta       =
