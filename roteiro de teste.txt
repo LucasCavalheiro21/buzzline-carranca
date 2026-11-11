@@ -87,24 +87,27 @@ ETAPA 2 - BOTÃO
 ---------------
 Hoje o robô usa o botão BOOT da placa (PINO_BOTAO = 0), que funciona sempre.
 O botão do robô (pino 16) estava falhando: às vezes não ligava, às vezes ligava
-e não desligava. Isso é físico (ligação ou botão), não código.
+e não desligava.
 
-Para voltar a usar o botão do pino 16, pedir para a mecânica/eletrônica conferir:
-  1. Os três fios do botão (VCC, GND e sinal): jumper frouxo, conector folgado,
-     solda fria, fio partido por dentro.
-  2. Em qual tensão o VCC do botão está ligado: TEM que ser 3,3 V.
-     Se estiver no 5 V, cada aperto manda 5 V para o pino e estraga ele com o tempo.
-     Se o pino 16 já estiver estragado, ligar em outro pino livre.
-  3. O próprio botão (desgastado = troca).
-  Teste com multímetro no fio de sinal: solto = valor fixo, apertado = o outro valor.
-  Se oscilar ou mudar mexendo no fio = mau contato.
+Por que falha: o botão tem 2 fios, um no pino 16 e o outro no GND ou na
+alimentação. Botão de 2 fios precisa de um resistor que segure o pino quando o
+botão está SOLTO. O código usa INPUT (sem resistor), então com o botão solto o
+pino fica "flutuando" e lê valores ao acaso. O BOOT funciona porque a placa já
+tem esse resistor.
+(Se com INPUT_PULLUP o botão nunca funcionava, o segundo fio deve estar na
+alimentação: o resistor interno deixa o pino sempre HIGH e o aperto não muda nada.)
+
+Como resolver, conforme onde está o SEGUNDO fio do botão:
+  - no GND:    no código, trocar INPUT por INPUT_PULLUP no iniciarPinos().
+               O resto já está certo (LOW = apertado). (RECOMENDADO)
+  - no 3,3 V:  mudar o fio para o GND e fazer o item acima.
+               (ou ajustar o código para INPUT_PULLDOWN com HIGH = apertado)
+  - no 5 V:    NÃO usar: 5 V estraga o pino do ESP32. Mudar o fio para o GND.
+               Se o pino 16 já estiver estragado, ligar em outro pino livre.
+Conferir também: fio frouxo, solda fria e o próprio botão (desgastado = troca).
 
 Depois de consertado: no mapeamento.h, PINO_BOTAO = 16 (ou o pino novo).
-Deixar o pinMode como está (INPUT).
-
-Problema: o robô liga sozinho logo depois da calibração (com o pino 16)
-  -> O botão manda HIGH quando apertado (contrário do BOOT). Avisar para ajustar
-     o código.
+Testar ligando e desligando 10 vezes, com os motores parados e girando.
 
 
 ETAPA 3 - CONFERIR O BÁSICO
